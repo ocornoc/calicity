@@ -108,7 +108,7 @@ pub trait ProspectiveAction<Spec: WorldSpec>: Debug + Send + Sync {
     ///
     /// If this returns [`PerformWorld`](LocalActionActRet::PerformWorld), then
     /// the [world act](ProspectiveAction::world_act) function is called.
-    fn local_act<'a>(
+    fn local_act(
         &mut self,
         exclusive: Vec<MutThing<Spec>>,
         shared: Vec<RefThing<Spec>>,

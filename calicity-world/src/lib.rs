@@ -302,7 +302,7 @@ impl<Spec: WorldSpec> World<Spec> {
             place.progress_time(dt);
         }
 
-        self.time += dt.into();
+        self.time += dt;
     }
 
     fn get_accepted_actions_queued(

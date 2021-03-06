@@ -10,15 +10,21 @@ use rayon::prelude::*;
 pub use entity::*;
 pub use action::*;
 
+/// An absolute time.
 pub type Time = NaiveDateTime;
+/// A "relative time" or duration of time.
 pub type RelativeTime = chrono::Duration;
 
 pub mod entity;
 pub mod action;
 
+/// The specification of the types used in the [world](World).
 pub trait WorldSpec {
+    /// The [character](Character) data.
     type CharData: Debug + Send + Sync;
+    /// The [character](Character) data.
     type ArtifactData: Debug + Send + Sync;
+    /// The [character](Character) data.
     type PlaceData: Debug + Send + Sync;
 }
 
@@ -50,12 +56,27 @@ impl Display for ThingIdx {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum RefThing<'a, Spec: WorldSpec + 'a> {
     Char(&'a Character<Spec>),
     Artifact(&'a Artifact<Spec>),
     Place(&'a Place<Spec>),
     Action(&'a PastAction),
+}
+
+impl<'a, Spec: WorldSpec + 'a> Debug for RefThing<'a, Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            RefThing::Char(c) =>
+                f.debug_tuple("RefThing::Char").field(c).finish(),
+            RefThing::Artifact(a) =>
+                f.debug_tuple("RefThing::Artifact").field(a).finish(),
+            RefThing::Place(p) =>
+                f.debug_tuple("RefThing::Place").field(p).finish(),
+            RefThing::Action(a) =>
+                f.debug_tuple("RefThing::Action").field(a).finish(),
+        }
+    }
 }
 
 impl<'a, Spec: WorldSpec + 'a> From<MutThing<'a, Spec>> for RefThing<'a, Spec> {
@@ -132,12 +153,27 @@ try_from_for_ref!(RefThing, Artifact<Spec>, Artifact);
 try_from_for_ref!(RefThing, Place<Spec>, Place);
 try_from_for_ref!(RefThing, PastAction, Action);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub enum MutThing<'a, Spec: WorldSpec + 'a> {
     Char(&'a mut Character<Spec>),
     Artifact(&'a mut Artifact<Spec>),
     Place(&'a mut Place<Spec>),
     Action(&'a mut PastAction),
+}
+
+impl<'a, Spec: WorldSpec + 'a> Debug for MutThing<'a, Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            MutThing::Char(c) =>
+                f.debug_tuple("MutThing::Char").field(c).finish(),
+            MutThing::Artifact(a) =>
+                f.debug_tuple("MutThing::Artifact").field(a).finish(),
+            MutThing::Place(p) =>
+                f.debug_tuple("MutThing::Place").field(p).finish(),
+            MutThing::Action(a) =>
+                f.debug_tuple("MutThing::Action").field(a).finish(),
+        }
+    }
 }
 
 try_from_for_ref!(MutThing, Character<Spec>, Char);
@@ -149,7 +185,6 @@ try_from_for_mut!(MutThing, Artifact, ArtifactData, Artifact);
 try_from_for_mut!(MutThing, Place, PlaceData, Place);
 try_from_for_mut!(MutThing, PastAction, Action);
 
-#[derive(Debug)]
 pub struct World<Spec: WorldSpec = DefaultSpec> {
     chars: Vec<Character<Spec>>,
     artifacts: Vec<Artifact<Spec>>,
@@ -446,6 +481,19 @@ impl<Spec: WorldSpec> World<Spec> {
                 action_states[i % aslen].queue.push(urgency, action);
             }
         }
+    }
+}
+
+impl<Spec: WorldSpec> Debug for World<Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f
+            .debug_struct("World")
+            .field("time", &self.time.to_string())
+            .field("chars", &self.chars)
+            .field("artifacts", &self.artifacts)
+            .field("places", &self.places)
+            .field("history", &self.history)
+            .finish()
     }
 }
 

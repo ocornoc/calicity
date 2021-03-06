@@ -131,10 +131,19 @@ pub mod urgencies {
     pub const URGENT: Urgency = 1_000_000;
 }
 
-#[derive(Debug)]
 pub(super) struct QueuedAction<Spec: WorldSpec> {
     urgency: Urgency,
     pub(super) act: Box<dyn ProspectiveAction<Spec>>,
+}
+
+impl<Spec: WorldSpec> Debug for QueuedAction<Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f
+            .debug_struct("QueuedAction")
+            .field("urgency", &self.urgency)
+            .field("act", &self.act)
+            .finish()
+    }
 }
 
 impl<Spec: WorldSpec> PartialEq for QueuedAction<Spec> {
@@ -157,14 +166,7 @@ impl<Spec: WorldSpec> Ord for QueuedAction<Spec> {
     }
 }
 
-#[derive(Debug)]
 pub struct QueuedActions<Spec: WorldSpec>(pub(super) Vec<QueuedAction<Spec>>);
-
-impl<Spec: WorldSpec> Default for QueuedActions<Spec> {
-    fn default() -> Self {
-        QueuedActions(Vec::default())
-    }
-}
 
 impl<Spec: WorldSpec> QueuedActions<Spec> {
     pub fn push(&mut self, urgency: Urgency, act: Box<dyn ProspectiveAction<Spec>>) {
@@ -186,6 +188,21 @@ impl<Spec: WorldSpec> QueuedActions<Spec> {
 
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+}
+
+impl<Spec: WorldSpec> Default for QueuedActions<Spec> {
+    fn default() -> Self {
+        QueuedActions(Vec::default())
+    }
+}
+
+impl<Spec: WorldSpec> Debug for QueuedActions<Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f
+            .debug_list()
+            .entries(self.0.iter())
+            .finish()
     }
 }
 
@@ -231,21 +248,10 @@ impl Default for SlotStatus {
 
 pub type ActionSlot = u32;
 
-#[derive(Debug)]
 pub struct ActionState<Spec: WorldSpec> {
     pub slots: HashMap<ActionSlot, SlotStatus>,
     pub queue: QueuedActions<Spec>,
     pub active: bool,
-}
-
-impl<Spec: WorldSpec> Default for ActionState<Spec> {
-    fn default() -> Self {
-        ActionState {
-            slots: HashMap::default(),
-            queue: QueuedActions::default(),
-            active: true,
-        }
-    }
 }
 
 impl<Spec: WorldSpec> ActionState<Spec> {
@@ -283,5 +289,26 @@ impl<Spec: WorldSpec> ActionState<Spec> {
 
     pub fn is_active(&self) -> bool {
         self.active
+    }
+}
+
+impl<Spec: WorldSpec> Default for ActionState<Spec> {
+    fn default() -> Self {
+        ActionState {
+            slots: HashMap::default(),
+            queue: QueuedActions::default(),
+            active: true,
+        }
+    }
+}
+
+impl<Spec: WorldSpec> Debug for ActionState<Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f
+            .debug_struct("ActionState")
+            .field("slots", &self.slots)
+            .field("queue", &self.queue)
+            .field("active", &self.active)
+            .finish()
     }
 }

@@ -197,7 +197,6 @@ where
     }
 }
 
-#[derive(Debug)]
 pub struct Character<Spec: WorldSpec> {
     pub entity_data: EntityData<CharIdx>,
     pub action_state: ActionState<Spec>,
@@ -229,6 +228,18 @@ impl<Spec: WorldSpec> Character<Spec> {
     }
 }
 
+impl<Spec: WorldSpec> Debug for Character<Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f
+            .debug_struct("Character")
+            .field("entity_data", &self.entity_data)
+            .field("action_state", &self.action_state)
+            .field("location", &self.location)
+            .field("data", &self.data)
+            .finish()
+    }
+}
+
 impl_refs_for_entities!(CharIdx, Character, "data");
 impl_acts_for_entities!(Character);
 
@@ -240,7 +251,6 @@ impl<Spec: WorldSpec> Entity<Spec, Spec::CharData, CharIdx> for Character<Spec> 
 
 impl<Spec: WorldSpec> ActingEntity<Spec, Spec::CharData, CharIdx> for Character<Spec> {}
 
-#[derive(Debug)]
 pub struct Artifact<Spec: WorldSpec> {
     pub entity_data: EntityData<ArtIdx>,
     pub action_state: ActionState<Spec>,
@@ -275,6 +285,18 @@ impl<Spec: WorldSpec> Artifact<Spec> {
 impl_refs_for_entities!(ArtIdx, Artifact, "data");
 impl_acts_for_entities!(Artifact);
 
+impl<Spec: WorldSpec> Debug for Artifact<Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f
+            .debug_struct("Artifact")
+            .field("entity_data", &self.entity_data)
+            .field("action_state", &self.action_state)
+            .field("location", &self.location)
+            .field("data", &self.data)
+            .finish()
+    }
+}
+
 impl<Spec: WorldSpec> Entity<Spec, Spec::ArtifactData, ArtIdx> for Artifact<Spec> {
     fn progress_time(&mut self, dt: RelativeTime) {
         self.action_state.progress_time(dt);
@@ -283,7 +305,6 @@ impl<Spec: WorldSpec> Entity<Spec, Spec::ArtifactData, ArtIdx> for Artifact<Spec
 
 impl<Spec: WorldSpec> ActingEntity<Spec, Spec::ArtifactData, ArtIdx> for Artifact<Spec> {}
 
-#[derive(Debug)]
 pub struct Place<Spec: WorldSpec> {
     pub entity_data: EntityData<PlaceIdx>,
     pub action_state: ActionState<Spec>,
@@ -311,6 +332,17 @@ impl<Spec: WorldSpec> Place<Spec> {
 
 impl_refs_for_entities!(PlaceIdx, Place, "data");
 impl_acts_for_entities!(Place);
+
+impl<Spec: WorldSpec> Debug for Place<Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f
+            .debug_struct("Place")
+            .field("entity_data", &self.entity_data)
+            .field("action_state", &self.action_state)
+            .field("data", &self.data)
+            .finish()
+    }
+}
 
 impl<Spec: WorldSpec> Entity<Spec, Spec::PlaceData, PlaceIdx> for Place<Spec> {
     fn progress_time(&mut self, dt: RelativeTime) {

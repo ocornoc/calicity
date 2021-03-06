@@ -303,7 +303,6 @@ impl<Spec: WorldSpec> World<Spec> {
     fn get_accepted_actions_queued(
         &mut self,
     ) -> Vec<(Box<dyn ProspectiveAction<Spec>>, Reserved)> {
-        // TODO: shuffle entities
         let map: HashMap<ThingIdx, bool> = self.chars.iter().map(|c| c.get_id().into())
             .chain(self.artifacts.iter().map(|a| a.get_id().into()))
             .chain(self.places.iter().map(|p| p.get_id().into()))
@@ -311,22 +310,29 @@ impl<Spec: WorldSpec> World<Spec> {
             .collect();
         let map = Mutex::new(map);
         let reserves = Reservations(&map);
+        let mut rng = thread_rng();
+        let mut chars = self.chars.iter().collect::<Vec<_>>();
+        let mut artifacts = self.artifacts.iter().collect::<Vec<_>>();
+        let mut places = self.places.iter().collect::<Vec<_>>();
+        chars.shuffle(&mut rng);
+        artifacts.shuffle(&mut rng);
+        places.shuffle(&mut rng);
 
-        self.chars
-            .par_iter()
+        chars
+            .into_par_iter()
             .filter_map(|c| if let Some(data) = c.pick_next_queued_action(self, reserves) {
                 Some((c.get_id().into(), data))
             } else {
                 None
             })
-            .chain(self.artifacts.par_iter().filter_map(|a|
+            .chain(artifacts.into_par_iter().filter_map(|a|
                 if let Some(data) = a.pick_next_queued_action(self, reserves) {
                     Some((a.get_id().into(), data))
                 } else {
                     None
                 }
             ))
-            .chain(self.places.par_iter().filter_map(|p|
+            .chain(places.into_par_iter().filter_map(|p|
                 if let Some(data) = p.pick_next_queued_action(self, reserves) {
                     Some((p.get_id().into(), data))
                 } else {

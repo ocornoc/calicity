@@ -17,6 +17,7 @@ name = "calicity-world"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "firestorm",
  "parking_lot",
  "rand",
  "rayon",
@@ -88,6 +89,12 @@ name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+
+[[package]]
+name = "firestorm"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa0c6d93d5e4dd8bfd385cc4c58ca001784b433be363c0ff3fc3e58d849e2571"
 
 [[package]]
 name = "getrandom"

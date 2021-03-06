@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use parking_lot::Mutex;
 use chrono::prelude::*;
 use rayon::prelude::*;
+use firestorm::profile_method;
 pub use entity::*;
 pub use action::*;
 
@@ -211,6 +212,7 @@ impl<Spec: WorldSpec> World<Spec> {
     }
 
     fn push_char(&mut self, mut character: Character<Spec>) -> CharIdx {
+        profile_method!(push_char);
         if character.entity_data.id.0 != 0 {
             panic!("Trying to insert a character already inserted!");
         } else {
@@ -223,6 +225,7 @@ impl<Spec: WorldSpec> World<Spec> {
     }
 
     fn push_artifact(&mut self, mut artifact: Artifact<Spec>) -> ArtIdx {
+        profile_method!(push_artifact);
         if artifact.entity_data.id.0 != 0 {
             panic!("Trying to insert an artifact already inserted!");
         } else {
@@ -235,6 +238,7 @@ impl<Spec: WorldSpec> World<Spec> {
     }
 
     fn push_place(&mut self, mut place: Place<Spec>) -> PlaceIdx {
+        profile_method!(push_place);
         if place.entity_data.id.0 != 0 {
             panic!("Trying to insert a place already inserted!");
         } else {
@@ -285,6 +289,7 @@ impl<Spec: WorldSpec> World<Spec> {
     }
 
     fn progress_time(&mut self, dt: RelativeTime) {
+        profile_method!(progress_time);
         for character in &mut self.chars {
             character.progress_time(dt);
         }
@@ -303,6 +308,7 @@ impl<Spec: WorldSpec> World<Spec> {
     fn get_accepted_actions_queued(
         &mut self,
     ) -> Vec<(Box<dyn ProspectiveAction<Spec>>, Reserved)> {
+        profile_method!(get_accepted_actions_queued);
         let map: HashMap<ThingIdx, bool> = self.chars.iter().map(|c| c.get_id().into())
             .chain(self.artifacts.iter().map(|a| a.get_id().into()))
             .chain(self.places.iter().map(|p| p.get_id().into()))
@@ -357,6 +363,7 @@ impl<Spec: WorldSpec> World<Spec> {
         &mut self,
         mut acts: Vec<(Box<dyn ProspectiveAction<Spec>>, Reserved)>,
     ) -> Vec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet)> {
+        profile_method!(perform_local_acts);
         let mut act_groups = Vec::with_capacity(10);
 
         while let Some(act) = acts.pop() {
@@ -408,6 +415,7 @@ impl<Spec: WorldSpec> World<Spec> {
         &mut self,
         lrets: Vec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet)>,
     ) {
+        profile_method!(perform_world_acts);
         let rets = lrets
             .into_iter()
             .filter_map(|(mut act, lret)| match lret {
@@ -456,12 +464,14 @@ impl<Spec: WorldSpec> World<Spec> {
     }
 
     fn apply_queued_acts(&mut self) {
+        profile_method!(apply_queued_acts);
         let acts = self.get_accepted_actions_queued();
         let lrets = self.perform_local_acts(acts);
         self.perform_world_acts(lrets);
     }
 
     pub fn perform_queued_actions(&mut self, dt: RelativeTime) {
+        profile_method!(perform_queued_actions);
         self.progress_time(dt);
         self.apply_queued_acts();
     }
@@ -471,6 +481,7 @@ impl<Spec: WorldSpec> World<Spec> {
         rng: &mut (impl Rng + ?Sized),
         actions: impl ExactSizeIterator<Item=(Urgency, Box<dyn ProspectiveAction<Spec>>)>,
     ) {
+        profile_method!(queue_new_actions);
         let mut action_states = self.chars.iter_mut().map(|c| c.get_action_state_mut())
             .chain(self.artifacts.iter_mut().map(|a| a.get_action_state_mut()))
             .chain(self.places.iter_mut().map(|p| p.get_action_state_mut()))

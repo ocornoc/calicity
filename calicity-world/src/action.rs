@@ -16,8 +16,8 @@ impl Reserved {
         self.exclusive.is_empty() && self.shared.is_empty()
     }
 
-    pub fn get_exclusives(&self) -> HashSet<ThingIdx> {
-        self.exclusive.clone().into_iter().collect()
+    pub fn get_exclusives(&self) -> &Vec<ThingIdx> {
+        &self.exclusive
     }
 
     pub(super) fn is_compatible(&self, other: &Self) -> bool {

@@ -94,6 +94,12 @@ pub enum LocalActionActRet {
     PerformWorld,
 }
 
+#[derive(Debug)]
+pub enum PreconditionOut {
+    Success(Reserved),
+    Delete,
+}
+
 pub trait ProspectiveAction<Spec: WorldSpec>: Debug + Send + Sync {
     /// Pick all the things relevant to the action.
     ///
@@ -104,7 +110,7 @@ pub trait ProspectiveAction<Spec: WorldSpec>: Debug + Send + Sync {
         world: &World<Spec>,
         thing: ThingIdx,
         reservations: Reservations,
-    ) -> Option<Reserved>;
+    ) -> Option<PreconditionOut>;
 
     /// Perform the action upon the relevant entities.
     ///

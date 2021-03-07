@@ -347,15 +347,21 @@ impl<Spec: WorldSpec> World<Spec> {
             ))
             .collect::<Vec<(ThingIdx, _)>>()
             .into_iter()
-            .map(|(id, (act_id, res))| (
-                match self.get_thing_mut(id) {
+            .map(|(id, (act_id, res, delete))| {
+                let queue = &mut match self.get_thing_mut(id) {
                     MutThing::Char(character) => character.get_action_state_mut(),
                     MutThing::Artifact(artifact) => artifact.get_action_state_mut(),
                     MutThing::Place(place) => place.get_action_state_mut(),
                     MutThing::Action(_) => unreachable!("past actions aren't ActionEntity"),
-                }.queue.0.remove(act_id).act,
-                res,
-            ))
+                }.queue.0;
+                let act = queue.remove(act_id).act;
+
+                for i in delete.into_iter().rev() {
+                    queue.remove(i);
+                }
+
+                (act, res)
+            })
             .collect()
     }
 

@@ -174,19 +174,21 @@ where
         &self,
         world: &World<Spec>,
         reservations: Reservations,
-    ) -> Option<(usize, Reserved)> {
+    ) -> Option<(usize, Reserved, Vec<usize>)> {
         let thing = self.get_entity_data().id.into();
         let action_state = self.get_action_state();
+        let mut delete = Vec::new();
 
         if action_state.is_active() {
-            action_state.queue.0
-                .iter()
-                .enumerate()
-                .find_map(move |(i, act)|
-                    act.act
-                        .pick_things(world, thing, reservations)
-                        .map(|reserved| (i, reserved))
-                )
+            for (i, act) in action_state.queue.0.iter().enumerate() {
+                match act.act.pick_things(world, thing, reservations) {
+                    Some(PreconditionOut::Success(res)) => return Some((i, res, delete)),
+                    Some(PreconditionOut::Delete) => delete.push(i),
+                    None => continue,
+                }
+            }
+
+            None
         } else {
             None
         }

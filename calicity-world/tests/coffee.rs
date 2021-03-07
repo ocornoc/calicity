@@ -13,7 +13,7 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
         world: &World,
         thing: ThingIdx,
         reservations: Reservations,
-    ) -> Option<Reserved> {
+    ) -> Option<PreconditionOut> {
         let me = if let RefThing::Char(c) = world.get_thing(thing) {
             if c.entity_data.name == "Grayson" {
                 c
@@ -38,10 +38,10 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
             return None;
         }
 
-        Some(reservations.try_reserve(vec![
+        PreconditionOut::Success(reservations.try_reserve(vec![
             thing,
             coffee_cup.entity_data.get_id().into(),
-        ]).unwrap())
+        ]).unwrap()).into()
     }
 
     fn local_act(

@@ -376,10 +376,10 @@ impl<Spec: WorldSpec> World<Spec> {
 
                 if group.iter().all(|(_, res)| res.is_compatible(potential)) {
                     group.push(acts.remove(i as usize));
-                    i -= 2;
-                } else {
-                    i -= 1;
                 }
+
+                i -= 1;
+            }
             }
 
             act_groups.push(group);

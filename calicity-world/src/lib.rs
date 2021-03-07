@@ -364,6 +364,14 @@ impl<Spec: WorldSpec> World<Spec> {
         mut acts: Vec<(Box<dyn ProspectiveAction<Spec>>, Reserved)>,
     ) -> Vec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet)> {
         profile_method!(perform_local_acts);
+        // parallelize?
+        for (_, res) in &mut acts {
+            res.exclusive.sort_unstable();
+            res.shared.sort_unstable();
+            res.exclusive.dedup();
+            res.shared.dedup();
+        }
+
         let mut act_groups = Vec::with_capacity(10);
 
         while let Some(act) = acts.pop() {
@@ -379,7 +387,6 @@ impl<Spec: WorldSpec> World<Spec> {
                 }
 
                 i -= 1;
-            }
             }
 
             act_groups.push(group);

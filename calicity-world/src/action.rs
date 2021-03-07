@@ -54,7 +54,9 @@ pub struct Reservations<'a>(pub(super) &'a Mutex<HashMap<ThingIdx, bool>>);
 
 impl<'a> Reservations<'a> {
     #[must_use="The reservation may not be successful"]
-    pub fn try_reserve(&self, exclusive: Vec<ThingIdx>) -> Result<Reserved, ReserveErr> {
+    pub fn try_reserve(&self, mut exclusive: Vec<ThingIdx>) -> Result<Reserved, ReserveErr> {
+        exclusive.sort_unstable();
+        exclusive.dedup();
         let iter = exclusive.iter();
 
         {

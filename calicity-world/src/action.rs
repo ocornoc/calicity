@@ -23,7 +23,7 @@ impl Reserved {
     pub(super) fn is_compatible(&self, other: &Self) -> bool {
         fn aux(left: &Reserved, right: &Reserved) -> bool {
             left.exclusive.iter().all(|index|
-                    !right.exclusive.contains(index) && !right.shared.contains(index)
+                !right.exclusive.contains(index) && !right.shared.contains(index)
             )
         }
 

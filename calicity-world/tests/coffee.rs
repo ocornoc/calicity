@@ -12,7 +12,6 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
         &self,
         world: &World,
         thing: ThingIdx,
-        reservations: Reservations,
     ) -> Option<PreconditionOut> {
         let me = if let RefThing::Char(c) = world.get_thing(thing) {
             if c.entity_data.name == "Grayson" {
@@ -38,10 +37,10 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
             return None;
         }
 
-        PreconditionOut::Success(reservations.try_reserve(vec![
-            thing,
-            coffee_cup.entity_data.get_id().into(),
-        ]).unwrap()).into()
+        PreconditionOut::Success(Reserved {
+            exclusive: vec![thing, coffee_cup.get_id().into()],
+            shared: Vec::new(),
+        }).into()
     }
 
     fn local_act(
@@ -66,14 +65,12 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
             SlotStatus::Locked(0xC0FFEE_BABE),
         );
 
-        LocalActionActRet::Executed(Some(ActionActRet {
-            action: PastActionRet {
-                name: "Grayson drank coffee from his coffee cup".to_string(),
+        LocalActionActRet::Completed(Some(PastActionRet {
+                description: "Grayson drank coffee from his coffee cup".to_string(),
                 causes: Box::new([]),
                 initiator: me.entity_data.get_id().into(),
                 recipients: Box::new([coffee_cup.entity_data.get_id().into()]),
                 bystanders: Box::new([]),
-            },
         }))
     }
 }

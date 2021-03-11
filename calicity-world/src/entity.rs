@@ -2,6 +2,14 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use super::*;
 
+/// A unique ID associated with every [entity].
+///
+/// Every [entity] has a [unique ID](Unique) associated with it, and unlike
+/// [thing IDs](ThingIdx), they are constant in a [world](World) (even through
+/// [entity] removals). They are also the sole factor in hashing and equality
+/// of [entities](Entity).
+///
+/// [entity]: Entity
 pub type Unique = u64;
 
 pub(super) fn get_unique() -> Unique {
@@ -10,10 +18,12 @@ pub(super) fn get_unique() -> Unique {
     UNIQUE.fetch_add(1, Ordering::Relaxed)
 }
 
+/// The data associated with an [entity](Entity).
 #[derive(Debug)]
 pub struct EntityData<Id: Copy + Debug + Eq + Ord> {
     pub(super) id: Id,
     pub(super) unique: Unique,
+    /// The name of the entity.
     pub name: String,
     pub(super) participated: Vec<PastActionIdx>,
     pub(super) created: Time,
@@ -34,23 +44,36 @@ impl<Id: Copy + Debug + Eq + Ord + Hash> Hash for EntityData<Id> {
 }
 
 impl<Id: Copy + Debug + Eq + Ord> EntityData<Id> {
+    /// Get the typed ID of the [entity](Entity).
     pub fn get_id(&self) -> Id {
         self.id
     }
 
+    /// Get the list of [actions](PastAction) that this [entity](Entity) has
+    /// been a participant in.
+    ///
+    /// [Actions](PastAction) always have an empty list of participated
+    /// [actions](PastAction).
     pub fn get_participated(&self) -> &Vec<PastActionIdx> {
         &self.participated
     }
 
+    /// Get the [time](Time) that this [entity](Entity) was created at.
+    ///
+    /// This doesn't necessarily correspond to birth [time](Time) for
+    /// [characters](Character): they could've been born into the
+    /// [world](World) at an earlier [time](Time), such as initial inhabitants.
     pub fn get_creation_time(&self) -> Time {
         self.created
     }
 
+    /// Get the [unique ID](Unique) associated with this [entity](Entity).
     pub fn get_unique_id(&self) -> Unique {
         self.unique
     }
 }
 
+/// A thing in the [world](World) with [entity data](EntityData).
 pub trait Entity<Spec, T, Id>: Eq + Hash + AsRef<EntityData<Id>> + AsMut<EntityData<Id>>
 where
     Id: Copy + Debug + Eq + Ord + Hash,
@@ -58,16 +81,23 @@ where
     Spec: WorldSpec,
     T: Debug + Send + Sync,
 {
+    /// Get the [entity data](EntityData) associated with this entity.
     fn get_entity_data(&self) -> &EntityData<Id> {
         self.as_ref()
     }
 
+    /// Get a mutable reference to the [entity data](EntityData) associated
+    /// with this entity.
     fn get_entity_data_mut(&mut self) -> &mut EntityData<Id> {
         self.as_mut()
     }
 
+    /// Progress time by a fixed duration of [time](RelativeTime).
+    ///
+    /// This does *not* include stuff like executing queued [actions](Actions).
     fn progress_time(&mut self, dt: RelativeTime);
 
+    /// Get the ID associated with this entity.
     fn get_id(&self) -> Id {
         self.get_entity_data().id
     }
@@ -146,6 +176,7 @@ macro_rules! impl_acts_for_entities {
     };
 }
 
+/// An [entity](Entity) with an [action state](ActionState).
 pub trait ActingEntity<Spec, T, Id>:
     Entity<Spec, T, Id> + AsRef<ActionState<Spec>> + AsMut<ActionState<Spec>>
 where
@@ -154,34 +185,48 @@ where
     Spec: WorldSpec,
     T: Debug + Send + Sync,
 {
+    /// Get a reference to the [action state](ActionState) of this
+    /// [entity](Entity).
     fn get_action_state(&self) -> &ActionState<Spec> {
         self.as_ref()
     }
 
+    /// Get a `mut` reference to the [action state](ActionState) of this
+    /// [entity](Entity.)
     fn get_action_state_mut(&mut self) -> &mut ActionState<Spec> {
         self.as_mut()
     }
 
+    /// Query the status of `slot` in the [action state](ActionState).
     fn get_slot_status(&self, slot: ActionSlot) -> Option<SlotStatus> {
         self.get_action_state().get_slot_status(slot)
     }
 
+    /// Query whether the `slot` in the [action state](ActionState) is
+    /// [open](SlotStatus::Open).
     fn is_slot_open(&self, slot: ActionSlot) -> bool {
         self.get_action_state().is_slot_open(slot)
     }
 
+    /// Pick the most [urgent](Urgency) [action] from the
+    /// [queued actions](QueuedActions) that satisfies its
+    /// [preconditions](ProspectiveAction::pick_things()).
+    ///
+    /// Returns the index of the [action] and its set of
+    /// [reserved entities](Reserved), if there is a satisfactory [action].
+    ///
+    /// [action]: ProspectiveAction
     fn pick_next_queued_action(
         &self,
         world: &World<Spec>,
-        reservations: Reservations,
     ) -> Option<(usize, Reserved, Vec<usize>)> {
         let thing = self.get_entity_data().id.into();
         let action_state = self.get_action_state();
         let mut delete = Vec::new();
 
-        if action_state.is_active() {
+        if action_state.active {
             for (i, act) in action_state.queue.0.iter().enumerate() {
-                match act.act.pick_things(world, thing, reservations) {
+                match act.act.pick_things(world, thing) {
                     Some(PreconditionOut::Success(res)) => return Some((i, res, delete)),
                     Some(PreconditionOut::Delete) => delete.push(i),
                     None => continue,
@@ -194,6 +239,8 @@ where
         }
     }
 
+    /// Push an action to the [action state](ActionState) of the
+    /// [entity](Entity).
     fn push_action(&mut self, urgency: Urgency, act: Box<dyn ProspectiveAction<Spec>>) {
         self.get_action_state_mut().queue.push(urgency, act);
     }

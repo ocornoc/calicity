@@ -1,9 +1,11 @@
+#![deny(broken_intra_doc_links)]
+#![deny(private_intra_doc_links)]
+#![deny(missing_debug_implementations)]
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::ops::{Index, IndexMut};
 use rand::prelude::*;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
-use std::collections::HashMap;
 use parking_lot::Mutex;
 use chrono::prelude::*;
 use rayon::prelude::*;
@@ -11,7 +13,7 @@ use firestorm::profile_method;
 pub use entity::*;
 pub use action::*;
 
-/// An absolute time.
+/// An absolute point in time.
 pub type Time = NaiveDateTime;
 /// A "relative time" or duration of time.
 pub type RelativeTime = chrono::Duration;
@@ -29,6 +31,7 @@ pub trait WorldSpec {
     type PlaceData: Debug + Send + Sync;
 }
 
+/// The default [specification](WorldSpec) of [world](World) data.
 #[derive(Debug)]
 pub struct DefaultSpec;
 
@@ -38,11 +41,16 @@ impl WorldSpec for DefaultSpec {
     type PlaceData = ();
 }
 
+/// An index to an [entity](Entity) in the [world](World).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ThingIdx {
+    /// An index to a [character](Character).
     Char(CharIdx),
+    /// An index to an [artifact](Artifact).
     Artifact(ArtIdx),
+    /// An index to a [place](Place).
     Place(PlaceIdx),
+    /// An index to an [action](PastAction).
     Action(PastActionIdx),
 }
 
@@ -57,11 +65,16 @@ impl Display for ThingIdx {
     }
 }
 
+/// A reference to an [entity](Entity) in the [world](World).
 #[derive(Clone, PartialEq, Eq)]
 pub enum RefThing<'a, Spec: WorldSpec + 'a> {
+    /// A reference to a [character](Character).
     Char(&'a Character<Spec>),
+    /// A reference to an [artifact](Artifact).
     Artifact(&'a Artifact<Spec>),
+    /// A reference to a [place](Place).
     Place(&'a Place<Spec>),
+    /// A reference to an [action](PastAction).
     Action(&'a PastAction),
 }
 
@@ -154,11 +167,16 @@ try_from_for_ref!(RefThing, Artifact<Spec>, Artifact);
 try_from_for_ref!(RefThing, Place<Spec>, Place);
 try_from_for_ref!(RefThing, PastAction, Action);
 
+/// A `mut` reference to an [entity](Entity) in the [world](World)
 #[derive(PartialEq, Eq)]
 pub enum MutThing<'a, Spec: WorldSpec + 'a> {
+    /// A `mut` reference to a [character](Character).
     Char(&'a mut Character<Spec>),
+    /// A `mut` reference to an [artifact](Artifact).
     Artifact(&'a mut Artifact<Spec>),
+    /// A `mut` reference to a [place](Place).
     Place(&'a mut Place<Spec>),
+    /// A `mut` reference to an [action](PastAction).
     Action(&'a mut PastAction),
 }
 
@@ -186,6 +204,7 @@ try_from_for_mut!(MutThing, Artifact, ArtifactData, Artifact);
 try_from_for_mut!(MutThing, Place, PlaceData, Place);
 try_from_for_mut!(MutThing, PastAction, Action);
 
+
 pub struct World<Spec: WorldSpec = DefaultSpec> {
     chars: Vec<Character<Spec>>,
     artifacts: Vec<Artifact<Spec>>,
@@ -196,6 +215,7 @@ pub struct World<Spec: WorldSpec = DefaultSpec> {
 }
 
 impl<Spec: WorldSpec> World<Spec> {
+    /// Create a new and empty [world](World), given the start [time](Time).
     pub fn new(start_time: Time) -> Self {
         World {
             chars: Vec::new(),
@@ -207,6 +227,7 @@ impl<Spec: WorldSpec> World<Spec> {
         }
     }
 
+    /// Get the current [time](Time) in the [world](World).
     pub fn get_time(&self) -> Time {
         self.time
     }
@@ -250,6 +271,11 @@ impl<Spec: WorldSpec> World<Spec> {
         }
     }
 
+    /// Get a [reference to a thing](RefThing) from an [index](ThingIdx) to it.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if there is no such [index](ThingIdx).
     pub fn get_thing(&self, index: ThingIdx) -> RefThing<Spec> {
         match index {
             ThingIdx::Char(id) => RefThing::Char(&self[id]),
@@ -259,6 +285,12 @@ impl<Spec: WorldSpec> World<Spec> {
         }
     }
 
+    /// Get a [`mut` reference to a thing](MutThing) from an [index](ThingIdx)
+    /// to it.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if there is no such [index](ThingIdx).
     pub fn get_thing_mut(&mut self, index: ThingIdx) -> MutThing<Spec> {
         match index {
             ThingIdx::Char(id) => MutThing::Char(&mut self[id]),
@@ -271,9 +303,8 @@ impl<Spec: WorldSpec> World<Spec> {
     unsafe fn get_thing_unsafe(&self, index: ThingIdx) -> MutThing<Spec> {
         fn aux<T>(t: &T) -> &mut T {
             use std::cell::UnsafeCell;
-            use std::mem::transmute;
 
-            unsafe { transmute::<_, &UnsafeCell<T>>(t).get().as_mut() }.unwrap()
+            unsafe { (&*(t as *const T as *const UnsafeCell<T>)).get().as_mut() }.unwrap()
         }
 
         match index {
@@ -284,11 +315,18 @@ impl<Spec: WorldSpec> World<Spec> {
         }
     }
 
+    /// Turn a unique identifier into an [index](ThingIdx) to an
+    /// [entity](Entity).
     pub fn lookup_unique(&self, unique: Unique) -> Option<ThingIdx> {
         self.uniques.get(&unique).copied()
     }
 
-    fn progress_time(&mut self, dt: RelativeTime) {
+    /// Progress the [time](Time) in the [world](World).
+    ///
+    /// This does *not* [execute any actions](World::perform_queued_actions()),
+    /// and only applies natural processes due to time, such as mood changing,
+    /// affinity changing, wound healing, etc.
+    pub fn progress_time(&mut self, dt: RelativeTime) {
         profile_method!(progress_time);
         for character in &mut self.chars {
             character.progress_time(dt);
@@ -309,13 +347,6 @@ impl<Spec: WorldSpec> World<Spec> {
         &mut self,
     ) -> Vec<(Box<dyn ProspectiveAction<Spec>>, Reserved)> {
         profile_method!(get_accepted_actions_queued);
-        let map: HashMap<ThingIdx, bool> = self.chars.iter().map(|c| c.get_id().into())
-            .chain(self.artifacts.iter().map(|a| a.get_id().into()))
-            .chain(self.places.iter().map(|p| p.get_id().into()))
-            .zip(std::iter::repeat(false))
-            .collect();
-        let map = Mutex::new(map);
-        let reserves = Reservations(&map);
         let mut rng = thread_rng();
         let mut chars = self.chars.iter().collect::<Vec<_>>();
         let mut artifacts = self.artifacts.iter().collect::<Vec<_>>();
@@ -326,29 +357,29 @@ impl<Spec: WorldSpec> World<Spec> {
 
         chars
             .into_par_iter()
-            .filter_map(|c| if let Some(data) = c.pick_next_queued_action(self, reserves) {
+            .filter_map(|c| if let Some(data) = c.pick_next_queued_action(self) {
                 Some((c.get_id().into(), data))
             } else {
                 None
             })
             .chain(artifacts.into_par_iter().filter_map(|a|
-                if let Some(data) = a.pick_next_queued_action(self, reserves) {
+                if let Some(data) = a.pick_next_queued_action(self) {
                     Some((a.get_id().into(), data))
                 } else {
                     None
                 }
             ))
             .chain(places.into_par_iter().filter_map(|p|
-                if let Some(data) = p.pick_next_queued_action(self, reserves) {
+                if let Some(data) = p.pick_next_queued_action(self) {
                     Some((p.get_id().into(), data))
                 } else {
                     None
                 }
             ))
-            .collect::<Vec<(ThingIdx, _)>>()
-            .into_iter()
             .map(|(id, (act_id, res, delete))| {
-                let queue = &mut match self.get_thing_mut(id) {
+                assert!(res.is_valid(), "Invalid reservation for {}: {:#?}", id, res);
+
+                let queue = &mut match unsafe { self.get_thing_unsafe(id) } {
                     MutThing::Char(character) => character.get_action_state_mut(),
                     MutThing::Artifact(artifact) => artifact.get_action_state_mut(),
                     MutThing::Place(place) => place.get_action_state_mut(),
@@ -424,18 +455,17 @@ impl<Spec: WorldSpec> World<Spec> {
         let rets = lrets
             .into_iter()
             .filter_map(|(mut act, lret)| match lret {
-                LocalActionActRet::Executed(ret) => ret,
+                LocalActionActRet::Completed(ret) => ret,
                 LocalActionActRet::PerformWorld => act.world_act(self),
             })
             .collect::<Vec<_>>();
 
-        for ret in rets {
-            let act = ret.action;
+        for act in rets {
             let act = PastAction {
                 entity_data: EntityData {
                     id: PastActionIdx(self.history.len()),
                     unique: get_unique(),
-                    name: act.name,
+                    name: act.description,
                     participated: Vec::new(),
                     created: self.get_time(),
                 },
@@ -475,12 +505,19 @@ impl<Spec: WorldSpec> World<Spec> {
         self.perform_world_acts(lrets);
     }
 
+    /// Perform all queued actions after advancing time by `dt`.
+    ///
+    /// # Panics
+    ///
+    /// If any [actions](ProspectiveAction) return an invalid
+    /// [reservation](Reservation), this function *may* panic.
     pub fn perform_queued_actions(&mut self, dt: RelativeTime) {
         profile_method!(perform_queued_actions);
         self.progress_time(dt);
         self.apply_queued_acts();
     }
 
+    /// Add new, random actions to 
     pub fn queue_new_actions(
         &mut self,
         rng: &mut (impl Rng + ?Sized),
@@ -529,19 +566,23 @@ macro_rules! get_ref_mut_index {
         $t:ty,
         $namet:ident $( ,)?
     ) => {
+        /// An index to a particular type in the [world](World).
         #[repr(transparent)]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct $idx(pub(crate) usize);
 
         impl<Spec: WorldSpec> World<Spec> {
+            /// Get a reference to an [entity](Entity) from its index.
             pub fn $nameref(&self, index: $idx) -> Option<&$t> {
                 self.$field.get(index.0)
             }
 
+            /// Get a `mut` reference to an [entity](Entity) from its index.
             pub fn $namemut(&mut self, index: $idx) -> Option<&mut $t> {
                 self.$field.get_mut(index.0)
             }
 
+            /// Get all [entities](Entity) of a certain type.
             pub fn $allref(&self) -> &Vec<$t> {
                 &self.$field
             }

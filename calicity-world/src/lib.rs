@@ -506,18 +506,14 @@ impl<Spec: WorldSpec> World<Spec> {
     }
 
     /// Perform all queued actions after advancing time by `dt`.
-    ///
-    /// # Panics
-    ///
-    /// If any [actions](ProspectiveAction) return an invalid
-    /// [reservation](Reservation), this function *may* panic.
     pub fn perform_queued_actions(&mut self, dt: RelativeTime) {
         profile_method!(perform_queued_actions);
         self.progress_time(dt);
         self.apply_queued_acts();
     }
 
-    /// Add new, random actions to 
+    /// Queue new, random [acts](ProspectiveAction) to
+    /// [entities](ActingEntity).
     pub fn queue_new_actions(
         &mut self,
         rng: &mut (impl Rng + ?Sized),

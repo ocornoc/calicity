@@ -80,7 +80,7 @@ pub enum LocalActionActRet {
 pub enum PreconditionOut {
     /// The [action](ProspectiveAction) successfully
     /// [picked](ProspectiveAction::pick_things) what it needs to
-    /// [reserve](Reserve).
+    /// [reserve](Reserved).
     Success(Reserved),
     /// The [action](ProspectiveAction) will be deleted.
     Delete,
@@ -123,13 +123,13 @@ pub type Urgency = i32;
 pub mod urgencies {
     use super::Urgency;
 
-    /// A non-urgent [action](ProspectiveAction).
+    /// A non-urgent [action](super::ProspectiveAction).
     pub const NONURGENT: Urgency = 0;
 
-    /// A semi-urgent [action](ProspectiveAction).
+    /// A semi-urgent [action](super::ProspectiveAction).
     pub const SEMIURGENT: Urgency = 1_000;
 
-    /// An urgent [action](ProspectiveAction).
+    /// An urgent [action](super::ProspectiveAction).
     pub const URGENT: Urgency = 1_000_000;
 }
 
@@ -333,7 +333,7 @@ impl<Spec: WorldSpec> ActionState<Spec> {
 
     /// Return where a [slot](ActionSlot) is [open](SlotStatus::Open).
     ///
-    /// If the [slot](ActionSlot) isn't in the [action state](ActionSate), this
+    /// If the [slot](ActionSlot) isn't in the [action state](ActionState), this
     /// returns `false`.
     pub fn is_slot_open(&self, slot: ActionSlot) -> bool {
         self.get_slot_status(slot) == Some(SlotStatus::Open)

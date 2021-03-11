@@ -94,7 +94,8 @@ where
 
     /// Progress time by a fixed duration of [time](RelativeTime).
     ///
-    /// This does *not* include stuff like executing queued [actions](Actions).
+    /// This does *not* include stuff like executing queued
+    /// [actions](ActionState).
     fn progress_time(&mut self, dt: RelativeTime);
 
     /// Get the ID associated with this entity.

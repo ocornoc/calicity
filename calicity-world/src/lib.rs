@@ -512,8 +512,7 @@ impl<Spec: WorldSpec> World<Spec> {
         self.apply_queued_acts();
     }
 
-    /// Queue new, random [acts](ProspectiveAction) to
-    /// [entities](ActingEntity).
+    /// Queue new, random [acts](ProspectiveAction) to [entities](ActingEntity).
     pub fn queue_new_actions(
         &mut self,
         rng: &mut (impl Rng + ?Sized),

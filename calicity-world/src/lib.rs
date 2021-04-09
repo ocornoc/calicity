@@ -6,10 +6,10 @@ use std::ops::{Index, IndexMut};
 use rand::prelude::*;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
-use parking_lot::Mutex;
 use chrono::prelude::*;
 use rayon::prelude::*;
 use firestorm::profile_method;
+use dycovec::DycoVec;
 pub use entity::*;
 pub use action::*;
 
@@ -399,7 +399,7 @@ impl<Spec: WorldSpec> World<Spec> {
     fn perform_local_acts(
         &mut self,
         mut acts: Vec<(Box<dyn ProspectiveAction<Spec>>, Reserved)>,
-    ) -> Vec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet)> {
+    ) -> DycoVec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet)> {
         profile_method!(perform_local_acts);
         let mut act_groups = Vec::with_capacity(10);
 
@@ -421,9 +421,9 @@ impl<Spec: WorldSpec> World<Spec> {
             act_groups.push(group);
         }
 
-        let rets = Mutex::new(Vec::with_capacity(act_groups.len()));
+        let rets = DycoVec::new();
         let retsr = &rets;
-        let me = &*self;
+        let me: &_ = self;
 
         for group in act_groups {
             rayon::scope(|s| {
@@ -438,38 +438,47 @@ impl<Spec: WorldSpec> World<Spec> {
                             .map(|&index| me.get_thing(index))
                             .collect();
                         let x = act.local_act(exclusive, shared);
-                        retsr.lock().push((act, x));
+                        retsr.push((act, x));
                     });
                 }
             });
         }
 
-        rets.into_inner()
+        rets
     }
 
     fn perform_world_acts(
         &mut self,
-        lrets: Vec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet)>,
+        lrets: DycoVec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet)>,
     ) {
         profile_method!(perform_world_acts);
         let rets = lrets
             .into_iter()
-            .filter_map(|(mut act, lret)| match lret {
+            .flat_map(|(mut act, lret)| match lret {
                 LocalActionActRet::Completed(ret) => ret,
                 LocalActionActRet::PerformWorld => act.world_act(self),
             })
             .collect::<Vec<_>>();
 
         for act in rets {
+            let id = self.history.len();
             let act = PastAction {
                 entity_data: EntityData {
-                    id: PastActionIdx(self.history.len()),
+                    id: PastActionIdx(id),
                     unique: get_unique(),
                     name: act.description,
                     participated: Vec::new(),
                     created: self.get_time(),
                 },
-                causes: act.causes,
+                causes: act.causes
+                    .into_iter()
+                    .map(|&cause| match cause {
+                        RelativeIdx::Absolute(a) => a,
+                        RelativeIdx::FromStartOfBatch(offset) =>
+                            PastActionIdx(((id as isize) + offset) as usize),
+                    })
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
                 caused: Vec::new(),
                 initiator: act.initiator,
                 recipients: act.recipients,

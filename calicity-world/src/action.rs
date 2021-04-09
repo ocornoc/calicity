@@ -67,7 +67,7 @@ pub enum LocalActionActRet {
     /// The `local_act` function completed and a new
     /// [historical action](PastAction) is potentially returned to be added
     /// to the history of the [world](World).
-    Completed(Option<PastActionRet>),
+    Completed(PastActionRetBatch),
     /// While the `local_act` function completed, the action requests that its
     /// [`world_act`](ProspectiveAction::world_act) function be executed.
     PerformWorld,
@@ -106,8 +106,8 @@ pub trait ProspectiveAction<Spec: WorldSpec>: Debug + Send + Sync {
 
     /// Perform an action mutable on the [world](World).
     #[allow(unused_variables)]
-    fn world_act(&mut self, world: &mut World<Spec>) -> Option<PastActionRet> {
-        None
+    fn world_act(&mut self, world: &mut World<Spec>) -> PastActionRetBatch {
+        Vec::new()
     }
 }
 
@@ -245,6 +245,14 @@ impl Display for PastAction {
     }
 }
 
+/// A potentially relative [past action index](PastActionIdx), used for
+/// referencing past actions in [batches](PastActionRetBatch).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RelativeIdx {
+    Absolute(PastActionIdx),
+    FromStartOfBatch(isize),
+}
+
 /// The information returned by a finished [action](ProspectiveAction) that
 /// will be turned into a [`PastAction`] by the [world](World).
 #[derive(Debug, Clone)]
@@ -252,7 +260,7 @@ pub struct PastActionRet {
     /// The description of the event.
     pub description: String,
     /// The [past actions](PastAction) that *directly* caused this.
-    pub causes: Box<[PastActionIdx]>,
+    pub causes: Box<[RelativeIdx]>,
     /// The [entity](ActingEntity) that initiated this event.
     pub initiator: ThingIdx,
     /// The recipients of this action.
@@ -264,6 +272,8 @@ pub struct PastActionRet {
     /// Bystanders aren't directly involved in the action at all.
     pub bystanders: Box<[ThingIdx]>,
 }
+
+pub type PastActionRetBatch = Vec<PastActionRet>;
 
 /// An arbitrary integer used to encode some user-defined reason for which the
 /// [action slot](ActionSlot) it's associated with is locked.

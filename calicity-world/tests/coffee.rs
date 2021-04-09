@@ -65,13 +65,13 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
             SlotStatus::Locked(0xC0FFEE_BABE),
         );
 
-        LocalActionActRet::Completed(Some(PastActionRet {
-                description: "Grayson drank coffee from his coffee cup".to_string(),
-                causes: Box::new([]),
-                initiator: me.entity_data.get_id().into(),
-                recipients: Box::new([coffee_cup.entity_data.get_id().into()]),
-                bystanders: Box::new([]),
-        }))
+        LocalActionActRet::Completed(vec![PastActionRet {
+            description: "Grayson drank coffee from his coffee cup".to_string(),
+            causes: Box::new([]),
+            initiator: me.entity_data.get_id().into(),
+            recipients: Box::new([coffee_cup.entity_data.get_id().into()]),
+            bystanders: Box::new([]),
+        }])
     }
 }
 

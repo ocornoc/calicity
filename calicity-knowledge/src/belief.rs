@@ -5,8 +5,6 @@ use ordered_float::NotNan;
 use calicity_world::{ThingIdx, PastActionIdx, RelativeTime};
 use rand::prelude::*;
 
-pub type RNG = ThreadRng;
-
 type Nf32 = NotNan<f32>;
 pub type Strength = Nf32;
 pub type Memorability = Nf32;
@@ -15,8 +13,67 @@ pub type ObsScore = Nf32;
 
 const NF32_ZERO: Nf32 = unsafe { Nf32::unchecked_new(0.0) };
 
-fn forgetting_curve(x: f32, k: f32, c: f32) -> f32 {
-    k * (x.ln_1p().powf(c) + k).recip()
+/// The curve defining the memorability of something.
+///
+/// Based on the summed exponential formula used in
+/// [`10.1371/journal.pone.0120644`](https://doi.org/10.1371/journal.pone.0120644).
+///
+/// # Differences from paper
+///
+/// The only difference from the summed exponential formula used in the paper
+/// is that `a1` and `a2` are stored *negated*. So, when the paper says it uses
+/// `a1 = 0.000319`, we store it as `a1 = -0.000319`.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct SavingsCurve {
+    pub mu1: Nf32,
+    pub mu2: Nf32,
+    pub a1: Nf32,
+    pub a2: Nf32,
+}
+
+impl SavingsCurve {
+    /// The curve fit to Ebbinghaus's data, from
+    /// [Table 5](https://doi.org/10.1371/journal.pone.0120644.t005).
+    pub const EBBINGHAUS: Self = unsafe { SavingsCurve {
+        mu1: Nf32::unchecked_new(0.383),
+        mu2: Nf32::unchecked_new(0.321),
+        a1: Nf32::unchecked_new(-0.000319),
+        a2: Nf32::unchecked_new(-1.79E-07),
+    } };
+    /// The curve fit to Mack's data, from
+    /// [Table 5](https://doi.org/10.1371/journal.pone.0120644.t005).
+    pub const MACK: Self = unsafe { SavingsCurve {
+        mu1: Nf32::unchecked_new( 0.315),
+        mu2: Nf32::unchecked_new(0.323),
+        a1: Nf32::unchecked_new(-0.000296),
+        a2: Nf32::unchecked_new( -7.99E-08),
+    } };
+    /// The curve fit to Seitz's data, from
+    /// [Table 5](https://doi.org/10.1371/journal.pone.0120644.t005).
+    pub const SEITZ: Self = unsafe { SavingsCurve {
+        mu1: Nf32::unchecked_new(0.304),
+        mu2: Nf32::unchecked_new(0.266),
+        a1: Nf32::unchecked_new(-0.000457),
+        a2: Nf32::unchecked_new(-1.22E-07),
+    } };
+    /// The curve fit to Dros's data, from
+    /// [Table 5](https://doi.org/10.1371/journal.pone.0120644.t005).
+    pub const DROS: Self = unsafe { SavingsCurve {
+        mu1: Nf32::unchecked_new(0.262),
+        mu2: Nf32::unchecked_new(0.3),
+        a1: Nf32::unchecked_new(-0.000353),
+        a2: Nf32::unchecked_new( -1.00E-06),
+    } };
+
+    pub fn savings(&self, t: Nf32) -> f32 {
+        let rhs = self.mu2 * (self.a1 * t).exp();
+        (self.a1 * t).exp().mul_add(*self.mu1, *rhs)
+    }
+
+    pub fn recall(&mut self) {
+        self.a1 *= 0.6666666666;
+        self.a2 *= 0.6666666666;
+    }
 }
 
 pub trait BeliefFacet: Debug + Hash + Eq + Clone {
@@ -42,7 +99,7 @@ pub trait BeliefValue: Debug + Hash + Eq + Sized + Clone {
     ) -> Option<(Self, OccasionalEvidence)>;
 }
 
-/// A kind of (occasional) evidence.
+/// A kind of [(occasional) evidence](OccasionalEvidence).
 ///
 /// There are different kinds of evidence, and each different kind of evidence
 /// has distinct properties. For example, for
@@ -50,10 +107,22 @@ pub trait BeliefValue: Debug + Hash + Eq + Sized + Clone {
 /// something, so that entity that the belief owner was reminded of is saved.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvidenceKind {
+    /// Knowledge that was conjured due to being reminded of something else and
+    /// conflating the two.
+    ///
+    /// For example, if Adam saw another girl similar in appearance to Eve, he
+    /// may accidentally "conjure" (transfer) some evidence regarding Eve to
+    /// that girl.
     Transference { subject: ThingIdx, reminded_of: ThingIdx },
+    /// Knowledge that was conjured due to just assuming something applied to
+    /// someone due to the commonality of that [belief](BeliefValue) within the
+    /// relevant area.
     Confabulation,
+    /// A lie spoken to someone else.
     Lie { spoken_to: ThingIdx },
+    /// A statement that was spoken to me.
     Statement { speaker: ThingIdx },
+    /// A statement overheard between two other entities.
     Eavesdropping { speaker: ThingIdx, spoken_to: ThingIdx },
 }
 
@@ -61,8 +130,7 @@ pub enum EvidenceKind {
 pub struct StrengthData {
     pub strength: Strength,
     pub peak_strength: Strength,
-    pub k: Nf32,
-    pub c: Nf32,
+    pub curve: SavingsCurve,
     pub offset: Nf32,
 }
 
@@ -70,8 +138,7 @@ impl StrengthData {
     pub const DEFAULT: Self = unsafe { StrengthData {
         strength: NotNan::unchecked_new(1000.0),
         peak_strength: NotNan::unchecked_new(1000.0),
-        k: NotNan::unchecked_new(30.0),
-        c: NotNan::unchecked_new(2.0),
+        curve: SavingsCurve::DROS,
         offset: NF32_ZERO,
     } };
 
@@ -81,7 +148,7 @@ impl StrengthData {
     }
 
     pub fn update_strength(&mut self) {
-        self.strength = self.peak_strength * forgetting_curve(*self.offset, *self.k, *self.c);
+        self.strength = self.peak_strength * self.curve.savings(self.offset);
     }
 
     pub fn reset(&mut self) {
@@ -99,62 +166,58 @@ impl Default for StrengthData {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MemorabilityData {
     pub memorability: Memorability,
-    pub k: Nf32,
-    pub c: Nf32,
-    pub minutes_since_last_recall: Nf32,
+    pub curve: SavingsCurve,
+    pub seconds_since_last_recall: Nf32,
     pub last_remember_attempt: Nf32,
     pub memorability_at_last_remember: Memorability,
-    pub original_c: Nf32,
+    pub original_curve: SavingsCurve,
 }
 
 impl MemorabilityData {
     pub const DEFAULT: Self = unsafe { MemorabilityData {
         memorability: NotNan::unchecked_new(1.0),
-        k: NotNan::unchecked_new(7.3),
-        c: NotNan::unchecked_new(3.7),
-        minutes_since_last_recall: NF32_ZERO,
+        curve: SavingsCurve::DROS,
+        seconds_since_last_recall: NF32_ZERO,
         last_remember_attempt: NF32_ZERO,
         memorability_at_last_remember: NotNan::unchecked_new(1.0),
-        original_c: NotNan::unchecked_new(7.3),
+        original_curve: SavingsCurve::DROS,
     } };
 
     pub fn deteriorate(&mut self, dt: RelativeTime) {
-        let minutes = dt.num_minutes() as f32;
-        self.minutes_since_last_recall += minutes;
+        let seconds = dt.num_seconds() as f32;
+        self.seconds_since_last_recall += seconds;
         self.update_memorability();
         self.update_last_memorability();
     }
 
     pub fn update_memorability(&mut self) {
-        self.memorability = Nf32::new(
-            forgetting_curve(*self.minutes_since_last_recall, *self.k, *self.c),
-        ).unwrap();
+        self.memorability = Nf32::new(self.curve.savings(self.seconds_since_last_recall)).unwrap();
     }
 
     pub fn update_last_memorability(&mut self) {
         self.memorability_at_last_remember = Nf32::new(
-            forgetting_curve(*self.last_remember_attempt, *self.k, *self.c),
+            self.curve.savings(self.last_remember_attempt),
         ).unwrap();
     }
 
     pub fn reset(&mut self) {
-        self.c = self.original_c;
-        self.minutes_since_last_recall = NF32_ZERO;
+        self.curve = self.original_curve;
+        self.seconds_since_last_recall = NF32_ZERO;
         self.last_remember_attempt = NF32_ZERO;
     }
 
     pub fn recall(&mut self) {
-        self.minutes_since_last_recall = NF32_ZERO;
+        self.seconds_since_last_recall = NF32_ZERO;
         self.last_remember_attempt = NF32_ZERO;
         self.memorability = unsafe { NotNan::unchecked_new(1.0) };
-        self.c *= 0.9;
+        self.curve.recall();
     }
 
     pub fn should_forget(&mut self, rng: &mut (impl Rng + ?Sized)) -> bool {
         let have_forgotten = rng.gen_bool(
             (*self.memorability_at_last_remember - *self.memorability) as f64,
         );
-        self.last_remember_attempt = self.minutes_since_last_recall;
+        self.last_remember_attempt = self.seconds_since_last_recall;
         have_forgotten
     }
 }

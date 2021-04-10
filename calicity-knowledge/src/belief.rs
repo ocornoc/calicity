@@ -198,7 +198,12 @@ impl ValueData {
             self.strength = self.observation_score;
 
             for evidence in &mut self.occasional_evidence {
-                self.strength += *evidence.strength.strength;
+                if matches!(evidence.kind, EvidenceKind::Lie {..}) {
+                    self.strength = unsafe { NotNan::unchecked_new(-std::f32::INFINITY) };
+                    return;
+                } else {
+                    self.strength += *evidence.strength.strength;
+                }
             }
         }
     }

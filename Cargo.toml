@@ -1,2 +1,5 @@
 [workspace]
-members = ["calicity-world"]
+members = [
+  "calicity-world",
+  "calicity-knowledge",
+]

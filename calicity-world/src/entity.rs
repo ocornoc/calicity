@@ -79,7 +79,7 @@ where
     Id: Copy + Debug + Eq + Ord + Hash,
     ThingIdx: From<Id>,
     Spec: WorldSpec,
-    T: Debug + Send + Sync,
+    T: Debug,
 {
     /// Get the [entity data](EntityData) associated with this entity.
     fn get_entity_data(&self) -> &EntityData<Id> {

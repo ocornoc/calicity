@@ -344,6 +344,8 @@ pub struct Beliefs<F: BeliefFacet> {
 
 impl<F: BeliefFacet> Beliefs<F> {
     pub fn deteriorate(&mut self, dt: RelativeTime) {
+        firestorm::profile_method!(deteriorate);
+
         for value in self.entity_beliefs.values_mut() {
             value.deteriorate(dt);
         }
@@ -352,6 +354,8 @@ impl<F: BeliefFacet> Beliefs<F> {
     }
 
     pub fn maybe_forget_all(&mut self, rng: &mut (impl Rng + ?Sized)) {
+        firestorm::profile_method!(maybe_forget_all);
+
         for value in self.entity_beliefs.values_mut() {
             value.maybe_forget_all(rng);
         }

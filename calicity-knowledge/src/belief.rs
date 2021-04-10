@@ -22,7 +22,8 @@ const NF32_ZERO: Nf32 = unsafe { Nf32::unchecked_new(0.0) };
 ///
 /// The only difference from the summed exponential formula used in the paper
 /// is that `a1` and `a2` are stored *negated*. So, when the paper says it uses
-/// `a1 = 0.000319`, we store it as `a1 = -0.000319`.
+/// `a1 = 0.000319`, we store it as `a1 = -0.000319`. This is **not** the case
+/// for `mu1` and `mu2`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SavingsCurve {
     pub mu1: Nf32,

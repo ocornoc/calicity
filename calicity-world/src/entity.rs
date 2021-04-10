@@ -184,7 +184,7 @@ where
     Id: Copy + Debug + Eq + Ord + Hash,
     ThingIdx: From<Id>,
     Spec: WorldSpec,
-    T: Debug + Send + Sync,
+    T: Debug,
 {
     /// Get a reference to the [action state](ActionState) of this
     /// [entity](Entity).

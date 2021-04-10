@@ -24,11 +24,11 @@ pub mod action;
 /// The specification of the types used in the [world](World).
 pub trait WorldSpec {
     /// The [character](Character) data.
-    type CharData: Debug + Send + Sync;
+    type CharData: Debug + Sync;
     /// The [character](Character) data.
-    type ArtifactData: Debug + Send + Sync;
+    type ArtifactData: Debug + Sync;
     /// The [character](Character) data.
-    type PlaceData: Debug + Send + Sync;
+    type PlaceData: Debug + Sync;
 }
 
 /// The default [specification](WorldSpec) of [world](World) data.

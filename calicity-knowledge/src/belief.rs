@@ -165,6 +165,7 @@ impl ValueData {
     pub fn deteriorate(&mut self, dt: RelativeTime) {
         for evidence in &mut self.occasional_evidence {
             evidence.strength.deteriorate(dt);
+            evidence.memorability.deteriorate(dt);
         }
 
         self.update_strength();

@@ -40,8 +40,6 @@ pub trait BeliefValue: Debug + Hash + Eq + Sized + Clone {
         evidence: usize,
         rng: &mut (impl Rng + ?Sized),
     ) -> Option<(Self, OccasionalEvidence)>;
-
-    fn remember(evidence: &mut OccasionalEvidence);
 }
 
 /// A kind of (occasional) evidence.
@@ -104,6 +102,8 @@ pub struct MemorabilityData {
     pub k: Nf32,
     pub c: Nf32,
     pub minutes_since_last_recall: Nf32,
+    pub last_remember_attempt: Nf32,
+    pub memorability_at_last_remember: Memorability,
     pub original_c: Nf32,
 }
 
@@ -113,12 +113,16 @@ impl MemorabilityData {
         k: NotNan::unchecked_new(7.3),
         c: NotNan::unchecked_new(3.7),
         minutes_since_last_recall: NF32_ZERO,
+        last_remember_attempt: NF32_ZERO,
+        memorability_at_last_remember: NotNan::unchecked_new(1.0),
         original_c: NotNan::unchecked_new(7.3),
     } };
 
     pub fn deteriorate(&mut self, dt: RelativeTime) {
-        self.minutes_since_last_recall += dt.num_minutes() as f32;
+        let minutes = dt.num_minutes() as f32;
+        self.minutes_since_last_recall += minutes;
         self.update_memorability();
+        self.update_last_memorability();
     }
 
     pub fn update_memorability(&mut self) {
@@ -127,15 +131,31 @@ impl MemorabilityData {
         ).unwrap();
     }
 
+    pub fn update_last_memorability(&mut self) {
+        self.memorability_at_last_remember = Nf32::new(
+            forgetting_curve(*self.last_remember_attempt, *self.k, *self.c),
+        ).unwrap();
+    }
+
     pub fn reset(&mut self) {
         self.c = self.original_c;
         self.minutes_since_last_recall = NF32_ZERO;
+        self.last_remember_attempt = NF32_ZERO;
     }
 
     pub fn recall(&mut self) {
         self.minutes_since_last_recall = NF32_ZERO;
+        self.last_remember_attempt = NF32_ZERO;
         self.memorability = unsafe { NotNan::unchecked_new(1.0) };
         self.c *= 0.9;
+    }
+
+    pub fn should_forget(&mut self, rng: &mut (impl Rng + ?Sized)) -> bool {
+        let have_forgotten = rng.gen_bool(
+            (*self.memorability_at_last_remember - *self.memorability) as f64,
+        );
+        self.last_remember_attempt = self.minutes_since_last_recall;
+        have_forgotten
     }
 }
 
@@ -189,6 +209,22 @@ impl ValueData {
         self.occasional_evidence.extend(vdata.occasional_evidence);
         self.update_strength();
     }
+
+    pub fn forget(&mut self, evidence: usize) {
+        self.occasional_evidence.swap_remove(evidence);
+    }
+
+    pub fn maybe_forget(&mut self, evidence: usize, rng: &mut (impl Rng + ?Sized)) {
+        if self.occasional_evidence[evidence].memorability.should_forget(rng) {
+            self.forget(evidence);
+        }
+    }
+
+    pub fn maybe_forget_all(&mut self, rng: &mut (impl Rng + ?Sized)) {
+        for evidence in (0..self.occasional_evidence.len()).into_iter().rev() {
+            self.maybe_forget(evidence, rng);
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -212,6 +248,12 @@ impl<V: BeliefValue> BeliefSet<V> {
             old.merge(vdata);
         } else {
             self.0.insert(value, vdata);
+        }
+    }
+
+    pub fn maybe_forget_all(&mut self, rng: &mut (impl Rng + ?Sized)) {
+        for value in self.0.values_mut() {
+            value.maybe_forget_all(rng);
         }
     }
 }
@@ -264,7 +306,7 @@ impl<F: BeliefFacet> FacetBeliefs<F> {
             .entry(value.clone())
             .or_default();
         if let Some((new_val, new_evidence)) = value.mutate_evidence(vdata, evidence, rng) {
-            vdata.occasional_evidence.remove(evidence);
+            vdata.occasional_evidence.swap_remove(evidence);
             vdata.update_strength();
             self.0
                 .entry(new_val.facet())
@@ -273,6 +315,12 @@ impl<F: BeliefFacet> FacetBeliefs<F> {
                 .entry(new_val)
                 .or_default().occasional_evidence
                 .push(new_evidence);
+        }
+    }
+
+    pub fn maybe_forget_all(&mut self, rng: &mut (impl Rng + ?Sized)) {
+        for value in self.0.values_mut() {
+            value.maybe_forget_all(rng);
         }
     }
 }
@@ -296,6 +344,14 @@ impl<F: BeliefFacet> Beliefs<F> {
         }
 
         self.other_beliefs.deteriorate(dt);
+    }
+
+    pub fn maybe_forget_all(&mut self, rng: &mut (impl Rng + ?Sized)) {
+        for value in self.entity_beliefs.values_mut() {
+            value.maybe_forget_all(rng);
+        }
+
+        self.other_beliefs.maybe_forget_all(rng);
     }
 }
 

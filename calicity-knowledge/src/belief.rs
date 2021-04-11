@@ -325,6 +325,13 @@ impl<V: BeliefValue> BeliefSet<V> {
             value.maybe_forget_all(rng);
         }
     }
+
+    pub fn mark_reflective(&mut self) {
+        for value in self.0.values_mut() {
+            value.reflective = true;
+            value.update_strength();
+        }
+    }
 }
 
 impl<V: BeliefValue> Default for BeliefSet<V> {

@@ -545,6 +545,29 @@ impl<Spec: WorldSpec> World<Spec> {
             }
         }
     }
+
+    /// Create a new [character](Character) in the [world](World).
+    pub fn new_character(
+        &mut self,
+        location: PlaceIdx,
+        data: Spec::CharData,
+    ) -> &mut Character<Spec> {
+        Character::new_in_world(self, location, data)
+    }
+
+    /// Create a new [place](Place) in the [world](World).
+    pub fn new_place(&mut self, data: Spec::PlaceData) -> &mut Place<Spec> {
+        Place::new_in_world(self, data)
+    }
+
+    /// Create a new [artifact](Artifact) in the [world](World).
+    pub fn new_artifact(
+        &mut self,
+        location: PlaceIdx,
+        data: Spec::ArtifactData,
+    ) -> &mut Artifact<Spec> {
+        Artifact::new_in_world(self, location, data)
+    }
 }
 
 impl<Spec: WorldSpec> Debug for World<Spec> {

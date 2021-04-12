@@ -78,12 +78,12 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
 #[test]
 fn main() {
     let mut world = World::new(NaiveDate::from_ymd(2000, 1, 1).and_hms(0, 0, 0));
-    let home = Place::new_in_world(&mut world, ()).get_id();
-    let grayson = Character::new_in_world(&mut world, home, ());
+    let home = world.new_place(()).get_id();
+    let grayson = world.new_character(home, ());
     grayson.entity_data.name = "Grayson".to_string();
     grayson.action_state.create_slot(CAFFEINE_FULFILLMENT_SLOT);
     grayson.action_state.queue.push_owned(urgencies::URGENT, DrinkCoffee);
-    let coffee_cup = Artifact::new_in_world(&mut world, home, ());
+    let coffee_cup = world.new_artifact(home, ());
     coffee_cup.entity_data.name = "Grayson's Coffee Cup".to_string();
     coffee_cup.action_state.create_slot(COFFEE_SLOT);
     let coffee_id = coffee_cup.get_id();

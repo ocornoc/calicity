@@ -96,9 +96,9 @@ pub trait BeliefValue: Debug + Hash + Eq + Sized + Clone {
 
     fn mutate_value(
         &self,
-        vdata: &ValueData,
+        vdata: &mut ValueData,
         rng: &mut (impl Rng + ?Sized),
-    ) -> Option<(Self, ValueData)>;
+    ) -> Option<Self>;
 
     fn mutate_evidence(
         &self,
@@ -423,11 +423,12 @@ impl<F: BeliefFacet> FacetBeliefs<F> {
             .or_default().0
             .entry(value.clone())
             .or_default();
-        if let Some((new_val, new_data)) = value.mutate_value(vdata, rng) {
-            self.0
+        if let Some(new_val) = value.mutate_value(vdata, rng) {
+            let new_data = self.0
                 .get_mut(&facet)
                 .unwrap().0
-                .remove(value);
+                .remove(value)
+                .unwrap();
             self.0
                 .entry(new_val.facet())
                 .or_default()

@@ -9,6 +9,6 @@ include = ["src/**/*"]
 firestorm = "0.4.5"
 rand = "0.8.3"
 ordered-float = "2.1.1"
-calicity-world = {path = "../calicity-world"}
+calicity-world = {version = "0.1", path = "../calicity-world"}
 
 [dev-dependencies]

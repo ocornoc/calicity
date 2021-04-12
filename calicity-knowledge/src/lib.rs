@@ -135,6 +135,8 @@ pub enum EvidenceKind {
     Lie { spoken_to: ThingIdx },
     /// A statement that was spoken to me.
     Statement { speaker: ThingIdx },
+    /// A statement I made to someone else.
+    Declaration { spoken_to: ThingIdx },
     /// A statement overheard between two other entities.
     Eavesdropping { speaker: ThingIdx, spoken_to: ThingIdx },
 }

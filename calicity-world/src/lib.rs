@@ -66,7 +66,7 @@ impl Display for ThingIdx {
 }
 
 /// A reference to an [entity](Entity) in the [world](World).
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum RefThing<'a, Spec: WorldSpec + 'a> {
     /// A reference to a [character](Character).
     Char(&'a Character<Spec>),

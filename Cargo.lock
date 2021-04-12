@@ -11,7 +11,6 @@ name = "calicity-knowledge"
 version = "0.1.0"
 dependencies = [
  "calicity-world",
- "dyn-clone",
  "firestorm",
  "ordered-float",
  "rand",
@@ -94,12 +93,6 @@ name = "dycovec"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1b75e2718c0b7507e834bbdf8186189de2afaa8b98e0fa069fc45e974e87881"
-
-[[package]]
-name = "dyn-clone"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
 name = "either"

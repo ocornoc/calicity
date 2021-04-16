@@ -92,7 +92,11 @@ pub trait ProspectiveAction<Spec: WorldSpec>: Debug + Send + Sync {
     ///
     /// If the return is [`None`], then the action isn't performed at all, used
     /// to represent the preconditions failing.
-    fn pick_things(&self, world: &World<Spec>, thing: ThingIdx) -> Option<PreconditionOut>;
+    fn pick_things<'a>(
+        &'a self,
+        world: &'a World<Spec>,
+        thing: RefThing<'a, Spec>,
+    ) -> Option<PreconditionOut>;
 
     /// Perform the action upon the relevant entities.
     ///
@@ -106,7 +110,7 @@ pub trait ProspectiveAction<Spec: WorldSpec>: Debug + Send + Sync {
 
     /// Perform an action mutable on the [world](World).
     #[allow(unused_variables)]
-    fn world_act(&mut self, world: &mut World<Spec>) -> PastActionRetBatch {
+    fn world_act<'a>(&'a mut self, world: &'a mut World<Spec>) -> PastActionRetBatch {
         Vec::new()
     }
 }

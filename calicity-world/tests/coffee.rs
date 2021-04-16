@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use calicity_world::*;
 use chrono::prelude::*;
 
@@ -11,17 +12,13 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
     fn pick_things(
         &self,
         world: &World,
-        thing: ThingIdx,
+        thing: RefThing<DefaultSpec>,
     ) -> Option<PreconditionOut> {
-        let me = if let RefThing::Char(c) = world.get_thing(thing) {
-            if c.entity_data.name == "Grayson" {
-                c
-            } else {
-                return None;
-            }
-        } else {
+        let me: &Character<_> = thing.try_into().ok()?;
+
+        if me.entity_data.name != "Grayson" {
             return None;
-        };
+        }
 
         if !me.action_state.is_slot_open(CAFFEINE_FULFILLMENT_SLOT) {
             return None;
@@ -38,7 +35,7 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
         }
 
         PreconditionOut::Success(Reserved {
-            exclusive: vec![thing, coffee_cup.get_id().into()],
+            exclusive: vec![me.get_id().into(), coffee_cup.get_id().into()],
             shared: Vec::new(),
         }).into()
     }

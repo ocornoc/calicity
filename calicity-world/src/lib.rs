@@ -22,7 +22,7 @@ pub mod entity;
 pub mod action;
 
 /// The specification of the types used in the [world](World).
-pub trait WorldSpec {
+pub trait WorldSpec: 'static {
     /// The [character](Character) data.
     type CharData: Debug + Sync;
     /// The [character](Character) data.
@@ -66,8 +66,7 @@ impl Display for ThingIdx {
 }
 
 /// A reference to an [entity](Entity) in the [world](World).
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum RefThing<'a, Spec: WorldSpec + 'a> {
+pub enum RefThing<'a, Spec: WorldSpec> {
     /// A reference to a [character](Character).
     Char(&'a Character<Spec>),
     /// A reference to an [artifact](Artifact).
@@ -78,7 +77,34 @@ pub enum RefThing<'a, Spec: WorldSpec + 'a> {
     Action(&'a PastAction),
 }
 
-impl<'a, Spec: WorldSpec + 'a> Debug for RefThing<'a, Spec> {
+impl<'a, Spec: WorldSpec> Clone for RefThing<'a, Spec> {
+    fn clone(&self) -> Self {
+        match self {
+            &RefThing::Char(c) => RefThing::Char(c),
+            &RefThing::Artifact(a) => RefThing::Artifact(a),
+            &RefThing::Place(p) => RefThing::Place(p),
+            &RefThing::Action(a) => RefThing::Action(a),
+        }
+    }
+}
+
+impl<'a, Spec: WorldSpec> Copy for RefThing<'a, Spec> {}
+
+impl<'a, Spec: WorldSpec> PartialEq for RefThing<'a, Spec> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (RefThing::Char(l), RefThing::Char(r)) => l == r,
+            (RefThing::Artifact(l), RefThing::Artifact(r)) => l == r,
+            (RefThing::Place(l), RefThing::Place(r)) => l == r,
+            (RefThing::Action(l), RefThing::Action(r)) => l == r,
+            _ => false,
+        }
+    }
+}
+
+impl<'a, Spec: WorldSpec> Eq for RefThing<'a, Spec> {}
+
+impl<'a, Spec: WorldSpec> Debug for RefThing<'a, Spec> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
             RefThing::Char(c) =>
@@ -93,7 +119,7 @@ impl<'a, Spec: WorldSpec + 'a> Debug for RefThing<'a, Spec> {
     }
 }
 
-impl<'a, Spec: WorldSpec + 'a> From<MutThing<'a, Spec>> for RefThing<'a, Spec> {
+impl<'a, Spec: WorldSpec> From<MutThing<'a, Spec>> for RefThing<'a, Spec> {
     fn from(index: MutThing<'a, Spec>) -> Self {
         match index {
             MutThing::Char(c) => RefThing::Char(c),
@@ -105,37 +131,14 @@ impl<'a, Spec: WorldSpec + 'a> From<MutThing<'a, Spec>> for RefThing<'a, Spec> {
 }
 
 macro_rules! try_from_for_ref {
-    ($thing:tt, $t:ty, $id:ident $( ,)?) => {
-        impl<'a, Spec: WorldSpec + 'a> TryFrom<$thing<'a, Spec>> for &'a $t {
-            type Error = $thing<'a, Spec>;
-        
-            fn try_from(value: $thing<'a, Spec>) -> Result<Self, Self::Error> {
-                if let $thing::$id(value) = value {
-                    Ok(value)
-                } else {
-                    Err(value)
-                }
+    ($thing:tt, $t:ty, $id:ident $(, $mt:ident)?) => {
+        impl<'a, Spec: WorldSpec> From<&'a $($mt)? $t> for $thing<'a, Spec> {
+            fn from(value: &'a $($mt)? $t) -> Self {
+                $thing::$id(value)
             }
         }
-    };
-    ($thing:tt, $t:tt, $id:ident $( ,)?) => {
-        impl<'a, Spec: WorldSpec + 'a> TryFrom<$thing<'a, Spec>> for &'a $t<Spec> {
-            type Error = $thing<'a, Spec>;
-        
-            fn try_from(value: $thing<Spec>) -> Result<Self, Self::Error> {
-                if let $thing::$id(value) = value {
-                    Ok(value)
-                } else {
-                    Err(value)
-                }
-            }
-        }
-    }
-}
 
-macro_rules! try_from_for_mut {
-    ($thing:tt, $t:ty, $id:ident $( ,)?) => {
-        impl<'a, Spec: WorldSpec + 'a> TryFrom<$thing<'a, Spec>> for &'a mut $t {
+        impl<'a, Spec: WorldSpec> TryFrom<$thing<'a, Spec>> for &'a $($mt)? $t {
             type Error = $thing<'a, Spec>;
         
             fn try_from(value: $thing<'a, Spec>) -> Result<Self, Self::Error> {
@@ -147,19 +150,6 @@ macro_rules! try_from_for_mut {
             }
         }
     };
-    ($thing:ident, $t:tt, $spect:ident, $id:ident $( ,)?) => {
-        impl<'a, Spec: WorldSpec + 'a> TryFrom<$thing<'a, Spec>> for &'a mut $t<Spec> {
-            type Error = $thing<'a, Spec>;
-        
-            fn try_from(value: $thing<'a, Spec>) -> Result<Self, Self::Error> {
-                if let $thing::$id(value) = value {
-                    Ok(value)
-                } else {
-                    Err(value)
-                }
-            }
-        }
-    }
 }
 
 try_from_for_ref!(RefThing, Character<Spec>, Char);
@@ -168,8 +158,7 @@ try_from_for_ref!(RefThing, Place<Spec>, Place);
 try_from_for_ref!(RefThing, PastAction, Action);
 
 /// A `mut` reference to an [entity](Entity) in the [world](World)
-#[derive(PartialEq, Eq)]
-pub enum MutThing<'a, Spec: WorldSpec + 'a> {
+pub enum MutThing<'a, Spec: WorldSpec> {
     /// A `mut` reference to a [character](Character).
     Char(&'a mut Character<Spec>),
     /// A `mut` reference to an [artifact](Artifact).
@@ -180,7 +169,21 @@ pub enum MutThing<'a, Spec: WorldSpec + 'a> {
     Action(&'a mut PastAction),
 }
 
-impl<'a, Spec: WorldSpec + 'a> Debug for MutThing<'a, Spec> {
+impl<'a, Spec: WorldSpec> PartialEq for MutThing<'a, Spec> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (MutThing::Char(l), MutThing::Char(r)) => l == r,
+            (MutThing::Artifact(l), MutThing::Artifact(r)) => l == r,
+            (MutThing::Place(l), MutThing::Place(r)) => l == r,
+            (MutThing::Action(l), MutThing::Action(r)) => l == r,
+            _ => false,
+        }
+    }
+}
+
+impl<'a, Spec: WorldSpec> Eq for MutThing<'a, Spec> {}
+
+impl<'a, Spec: WorldSpec> Debug for MutThing<'a, Spec> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
             MutThing::Char(c) =>
@@ -195,15 +198,10 @@ impl<'a, Spec: WorldSpec + 'a> Debug for MutThing<'a, Spec> {
     }
 }
 
-try_from_for_ref!(MutThing, Character<Spec>, Char);
-try_from_for_ref!(MutThing, Artifact<Spec>, Artifact);
-try_from_for_ref!(MutThing, Place<Spec>, Place);
-try_from_for_ref!(MutThing, PastAction, Action);
-try_from_for_mut!(MutThing, Character, CharData, Char);
-try_from_for_mut!(MutThing, Artifact, ArtifactData, Artifact);
-try_from_for_mut!(MutThing, Place, PlaceData, Place);
-try_from_for_mut!(MutThing, PastAction, Action);
-
+try_from_for_ref!(MutThing, Character<Spec>, Char, mut);
+try_from_for_ref!(MutThing, Artifact<Spec>, Artifact, mut);
+try_from_for_ref!(MutThing, Place<Spec>, Place, mut);
+try_from_for_ref!(MutThing, PastAction, Action, mut);
 
 pub struct World<Spec: WorldSpec = DefaultSpec> {
     chars: Vec<Character<Spec>>,

@@ -80,6 +80,8 @@ where
     ThingIdx: From<Id>,
     Spec: WorldSpec,
     T: Debug,
+    for<'a> RefThing<'a, Spec>: From<&'a Self>,
+    for<'a> MutThing<'a, Spec>: From<&'a mut Self>,
 {
     /// Get the [entity data](EntityData) associated with this entity.
     fn get_entity_data(&self) -> &EntityData<Id> {
@@ -185,6 +187,8 @@ where
     ThingIdx: From<Id>,
     Spec: WorldSpec,
     T: Debug,
+    for<'a> RefThing<'a, Spec>: From<&'a Self>,
+    for<'a> MutThing<'a, Spec>: From<&'a mut Self>,
 {
     /// Get a reference to the [action state](ActionState) of this
     /// [entity](Entity).
@@ -221,7 +225,7 @@ where
         &self,
         world: &World<Spec>,
     ) -> Option<(usize, Reserved, Vec<usize>)> {
-        let thing = self.get_entity_data().id.into();
+        let thing = self.into();
         let action_state = self.get_action_state();
         let mut delete = Vec::new();
 

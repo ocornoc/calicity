@@ -82,6 +82,7 @@ where
     T: Debug,
     for<'a> RefThing<'a, Spec>: From<&'a Self>,
     for<'a> MutThing<'a, Spec>: From<&'a mut Self>,
+    for<'a> ThingIdx: From<&'a Self>,
 {
     /// Get the [entity data](EntityData) associated with this entity.
     fn get_entity_data(&self) -> &EntityData<Id> {
@@ -160,6 +161,12 @@ macro_rules! impl_refs_for_entities {
                 self.entity_data.hash(state);
             }
         }
+
+        impl<'a, Spec: WorldSpec> From<&'a $t<Spec>> for ThingIdx {
+            fn from(r: &$t<Spec>) -> Self {
+                r.get_id().into()
+            }
+        }
     };
 }
 
@@ -189,6 +196,7 @@ where
     T: Debug,
     for<'a> RefThing<'a, Spec>: From<&'a Self>,
     for<'a> MutThing<'a, Spec>: From<&'a mut Self>,
+    for<'a> ThingIdx: From<&'a Self>,
 {
     /// Get a reference to the [action state](ActionState) of this
     /// [entity](Entity).

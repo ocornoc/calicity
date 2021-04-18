@@ -1,6 +1,7 @@
 #![deny(broken_intra_doc_links)]
 #![deny(private_intra_doc_links)]
-#![deny(missing_debug_implementations)]
+#![warn(missing_debug_implementations)]
+
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::ops::{Index, IndexMut};
 use rand::prelude::*;

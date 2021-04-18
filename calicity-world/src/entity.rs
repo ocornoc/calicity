@@ -232,7 +232,7 @@ where
     fn pick_next_queued_action(
         &self,
         world: &World<Spec>,
-    ) -> Option<(usize, Reserved, Vec<usize>)> {
+    ) -> Option<(Either<usize, Box<dyn ProspectiveAction<Spec>>>, Reserved, Vec<usize>)> {
         let thing = self.into();
         let action_state = self.get_action_state();
         let mut delete = Vec::new();
@@ -240,7 +240,10 @@ where
         if action_state.active {
             for (i, act) in action_state.queue.0.iter().enumerate() {
                 match act.act.pick_things(world, thing) {
-                    Some(PreconditionOut::Success(res)) => return Some((i, res, delete)),
+                    Some(PreconditionOut::SuccessOnce(res)) =>
+                        return Some((Either::Left(i), res, delete)),
+                    Some(PreconditionOut::SuccessRepeat(res, act)) =>
+                        return Some((Either::Right(act), res, delete)),
                     Some(PreconditionOut::Delete) => delete.push(i),
                     None => continue,
                 }

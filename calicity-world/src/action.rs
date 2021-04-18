@@ -76,12 +76,22 @@ pub enum LocalActionActRet {
 /// The requested [action](ProspectiveAction) to be performed by the
 /// [world](World) if the [action](ProspectiveAction) passes its
 /// [precondition](ProspectiveAction::pick_things).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum PreconditionOut {
+#[derive(Debug)]
+pub enum PreconditionOut<Spec: WorldSpec> {
     /// The [action](ProspectiveAction) successfully
     /// [picked](ProspectiveAction::pick_things) what it needs to
-    /// [reserve](Reserved).
-    Success(Reserved),
+    /// [reserve](Reserved) and will be moved out of the [action
+    /// state](ActionState) (ie, will not repeat).
+    ///
+    /// Intended for [actions](ProspectiveAction) that don't repeat.
+    SuccessOnce(Reserved),
+    /// The [action](ProspectiveAction) successfully
+    /// [picked](ProspectiveAction::pick_things) what it needs to
+    /// [reserve](Reserved) and another [action](ProspectiveAction) will be
+    /// performed in its place.
+    ///
+    /// Intended for [actions](ProspectiveAction) that do repeat.
+    SuccessRepeat(Reserved, Box<dyn ProspectiveAction<Spec>>),
     /// The [action](ProspectiveAction) will be deleted.
     Delete,
 }
@@ -96,7 +106,7 @@ pub trait ProspectiveAction<Spec: WorldSpec>: Debug + Send + Sync {
         &'a self,
         world: &'a World<Spec>,
         thing: RefThing<'a, Spec>,
-    ) -> Option<PreconditionOut>;
+    ) -> Option<PreconditionOut<Spec>>;
 
     /// Perform the action upon the relevant entities.
     ///

@@ -10,6 +10,7 @@ use chrono::prelude::*;
 use rayon::prelude::*;
 use firestorm::profile_method;
 use dycovec::DycoVec;
+use either::Either;
 pub use entity::*;
 pub use action::*;
 
@@ -374,7 +375,7 @@ impl<Spec: WorldSpec> World<Spec> {
                     None
                 }
             ))
-            .map(|(id, (act_id, res, delete))| {
+            .map(|(id, (act, res, delete))| {
                 assert!(res.is_valid(), "Invalid reservation for {}: {:#?}", id, res);
 
                 let queue = &mut match unsafe { self.get_thing_unsafe(id) } {
@@ -383,7 +384,11 @@ impl<Spec: WorldSpec> World<Spec> {
                     MutThing::Place(place) => place.get_action_state_mut(),
                     MutThing::Action(_) => unreachable!("past actions aren't ActionEntity"),
                 }.queue.0;
-                let act = queue.remove(act_id).act;
+
+                let act = match act {
+                    Either::Left(act_id) => queue.remove(act_id).act,
+                    Either::Right(act) => act,
+                };
 
                 for i in delete.into_iter().rev() {
                     queue.remove(i);

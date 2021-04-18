@@ -13,7 +13,7 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
         &self,
         world: &World,
         thing: RefThing<DefaultSpec>,
-    ) -> Option<PreconditionOut> {
+    ) -> Option<PreconditionOut<DefaultSpec>> {
         let me: &Character<_> = thing.try_into().ok()?;
 
         if me.entity_data.name != "Grayson" {
@@ -34,7 +34,7 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
             return None;
         }
 
-        PreconditionOut::Success(Reserved {
+        PreconditionOut::SuccessOnce(Reserved {
             exclusive: vec![me.get_id().into(), coffee_cup.get_id().into()],
             shared: Vec::new(),
         }).into()

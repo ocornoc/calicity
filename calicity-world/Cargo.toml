@@ -11,3 +11,4 @@ chrono = {version = "0.4.19", default-features = false, features = ["std"]}
 rand = "0.8.3"
 dycovec = "0.1.1"
 firestorm = "0.4.5"
+either = "1.6.1"

@@ -572,6 +572,13 @@ impl<Spec: WorldSpec> World<Spec> {
     ) -> &mut Artifact<Spec> {
         Artifact::new_in_world(self, location, data)
     }
+
+    /// Insert a new [past action](PastAction) into the history of the
+    /// [world](World).
+    pub fn new_action(&mut self, data: PastAction) -> &mut PastAction {
+        self.history.push(data);
+        self.history.last_mut().unwrap()
+    }
 }
 
 impl<Spec: WorldSpec> Debug for World<Spec> {
@@ -592,6 +599,7 @@ macro_rules! get_ref_mut_index {
         $nameref:ident,
         $namemut:ident,
         $allref:ident,
+        $allmut:ident,
         $field:ident,
         $idx:tt,
         $t:ty,
@@ -616,6 +624,11 @@ macro_rules! get_ref_mut_index {
             /// Get all [entities](Entity) of a certain type.
             pub fn $allref(&self) -> &Vec<$t> {
                 &self.$field
+            }
+
+            /// Get all [entities](Entity) of a certain type.
+            pub fn $allmut(&mut self) -> &mut Vec<$t> {
+                &mut self.$field
             }
         }
 
@@ -657,6 +670,7 @@ get_ref_mut_index!(
     get_char,
     get_char_mut,
     get_all_chars,
+    get_all_chars_mut,
     chars,
     CharIdx,
     Character<Spec>,
@@ -666,6 +680,7 @@ get_ref_mut_index!(
     get_art,
     get_art_mut,
     get_all_artifacts,
+    get_all_artifacts_mut,
     artifacts,
     ArtIdx,
     Artifact<Spec>,
@@ -675,6 +690,7 @@ get_ref_mut_index!(
     get_place,
     get_place_mut,
     get_all_places,
+    get_all_places_mut,
     places,
     PlaceIdx,
     Place<Spec>,
@@ -684,6 +700,7 @@ get_ref_mut_index!(
     get_past_action,
     get_past_action_mut,
     get_all_past_actions,
+    get_all_past_actions_mut,
     history,
     PastActionIdx,
     PastAction,

@@ -67,6 +67,17 @@ impl Display for ThingIdx {
     }
 }
 
+impl<Spec: WorldSpec> From<RefThing<'_, Spec>> for ThingIdx {
+    fn from(r: RefThing<Spec>) -> Self {
+        match r {
+            RefThing::Char(c) => ThingIdx::Char(c.get_id()),
+            RefThing::Artifact(a) => ThingIdx::Artifact(a.get_id()),
+            RefThing::Place(p) => ThingIdx::Place(p.get_id()),
+            RefThing::Action(a) => ThingIdx::Action(<PastAction as Entity<Spec, _, _>>::get_id(a)),
+        }
+    }
+}
+
 /// A reference to an [entity](Entity) in the [world](World).
 pub enum RefThing<'a, Spec: WorldSpec> {
     /// A reference to a [character](Character).

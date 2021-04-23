@@ -134,6 +134,12 @@ macro_rules! impl_refs_for_entities {
                 self.entity_data.hash(state);
             }
         }
+
+        impl<'a> From<&'a $t> for ThingIdx {
+            fn from(r: &$t) -> Self {
+                r.as_ref().id.into()
+            }
+        }
     };
     ($idx:ty, $t:tt, "data" $( ,)?) => {
         impl<Spec: WorldSpec> AsRef<EntityData<$idx>> for $t<Spec> {

@@ -259,6 +259,10 @@ impl Display for PastAction {
     }
 }
 
+impl<Spec: WorldSpec> Entity<Spec, (), PastActionIdx> for PastAction {
+    fn progress_time(&mut self, _dt: RelativeTime) {}
+}
+
 /// A potentially relative [past action index](PastActionIdx), used for
 /// referencing past actions in [batches](PastActionRetBatch).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -78,6 +78,17 @@ impl<Spec: WorldSpec> From<RefThing<'_, Spec>> for ThingIdx {
     }
 }
 
+impl<Spec: WorldSpec> From<MutThing<'_, Spec>> for ThingIdx {
+    fn from(r: MutThing<Spec>) -> Self {
+        match r {
+            MutThing::Char(c) => ThingIdx::Char(c.get_id()),
+            MutThing::Artifact(a) => ThingIdx::Artifact(a.get_id()),
+            MutThing::Place(p) => ThingIdx::Place(p.get_id()),
+            MutThing::Action(a) => ThingIdx::Action(<PastAction as Entity<Spec, _, _>>::get_id(a)),
+        }
+    }
+}
+
 /// A reference to an [entity](Entity) in the [world](World).
 pub enum RefThing<'a, Spec: WorldSpec> {
     /// A reference to a [character](Character).

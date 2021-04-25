@@ -44,7 +44,7 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
         &mut self,
         mut exclusive: Vec<MutThing<DefaultSpec>>,
         _: Vec<RefThing<DefaultSpec>>,
-    ) -> LocalActionActRet {
+    ) -> LocalActionActRet<DefaultSpec> {
         let (me, coffee_cup) = match exclusive.as_mut_slice() {
             [MutThing::Char(me), MutThing::Artifact(cup)] => (me, cup),
             s => panic!("Failed to match things: {:?}", s),
@@ -61,14 +61,15 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
             COFFEE_SLOT,
             SlotStatus::Locked(0xC0FFEE_BABE),
         );
-
-        LocalActionActRet::Completed(vec![PastActionRet {
+        let act = PastActionRet {
             description: "Grayson drank coffee from his coffee cup".to_string(),
             causes: Box::new([]),
             initiator: me.entity_data.get_id().into(),
             recipients: Box::new([coffee_cup.entity_data.get_id().into()]),
             bystanders: Box::new([]),
-        }])
+        };
+
+        LocalActionActRet::Completed(vec![Box::new(move |_, _| act)])
     }
 }
 

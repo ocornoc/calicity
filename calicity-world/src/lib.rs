@@ -425,7 +425,7 @@ impl<Spec: WorldSpec> World<Spec> {
     fn perform_local_acts(
         &mut self,
         mut acts: Vec<(Box<dyn ProspectiveAction<Spec>>, Reserved)>,
-    ) -> DycoVec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet)> {
+    ) -> DycoVec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet<Spec>)> {
         profile_method!(perform_local_acts);
         let mut act_groups = Vec::with_capacity(10);
 
@@ -475,9 +475,10 @@ impl<Spec: WorldSpec> World<Spec> {
 
     fn perform_world_acts(
         &mut self,
-        lrets: DycoVec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet)>,
+        lrets: DycoVec<(Box<dyn ProspectiveAction<Spec>>, LocalActionActRet<Spec>)>,
     ) {
         profile_method!(perform_world_acts);
+        let mut id = self.history.len();
         let rets = lrets
             .into_iter()
             .flat_map(|(mut act, lret)| match lret {
@@ -487,7 +488,7 @@ impl<Spec: WorldSpec> World<Spec> {
             .collect::<Vec<_>>();
 
         for act in rets {
-            let id = self.history.len();
+            let act = act(self, PastActionIdx(id));
             let act = PastAction {
                 entity_data: EntityData {
                     id: PastActionIdx(id),
@@ -496,15 +497,7 @@ impl<Spec: WorldSpec> World<Spec> {
                     participated: Vec::new(),
                     created: self.get_time(),
                 },
-                causes: act.causes
-                    .into_iter()
-                    .map(|&cause| match cause {
-                        RelativeIdx::Absolute(a) => a,
-                        RelativeIdx::FromStartOfBatch(offset) =>
-                            PastActionIdx(((id as isize) + offset) as usize),
-                    })
-                    .collect::<Vec<_>>()
-                    .into_boxed_slice(),
+                causes: act.causes,
                 caused: Vec::new(),
                 initiator: act.initiator,
                 recipients: act.recipients,
@@ -530,6 +523,7 @@ impl<Spec: WorldSpec> World<Spec> {
 
             self.uniques.insert(act.entity_data.unique, act.entity_data.id.into());
             self.history.push(act);
+            id += 1;
         }
     }
 

@@ -62,21 +62,32 @@ impl Reserved {
 }
 
 /// The return action after performing [`ProspectiveAction::local_act`].
-#[derive(Debug, Clone)]
-pub enum LocalActionActRet {
+pub enum LocalActionActRet<Spec: WorldSpec> {
     /// The `local_act` function completed and a new
     /// [historical action](PastAction) is potentially returned to be added
     /// to the history of the [world](World).
-    Completed(PastActionRetBatch),
+    Completed(PastActionRetBatch<Spec>),
     /// While the `local_act` function completed, the action requests that its
     /// [`world_act`](ProspectiveAction::world_act) function be executed.
     PerformWorld,
 }
 
+impl<Spec: WorldSpec> Debug for LocalActionActRet<Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        if let LocalActionActRet::Completed(ref parb) = self {
+            f
+                .debug_tuple("Completed")
+                .field(&format!("[.. {} PastAction generators]", parb.len()))
+                .finish()
+        } else {
+            f.debug_struct("PerformWorld").finish()
+        }
+    }
+}
+
 /// The requested [action](ProspectiveAction) to be performed by the
 /// [world](World) if the [action](ProspectiveAction) passes its
 /// [precondition](ProspectiveAction::pick_things).
-#[derive(Debug)]
 pub enum PreconditionOut<Spec: WorldSpec> {
     /// The [action](ProspectiveAction) successfully
     /// [picked](ProspectiveAction::pick_things) what it needs to
@@ -94,6 +105,20 @@ pub enum PreconditionOut<Spec: WorldSpec> {
     SuccessRepeat(Reserved, Box<dyn ProspectiveAction<Spec>>),
     /// The [action](ProspectiveAction) will be deleted.
     Delete,
+}
+
+impl<Spec: WorldSpec> Debug for PreconditionOut<Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            PreconditionOut::SuccessOnce(r) => f.debug_tuple("SuccessOnce").field(r).finish(),
+            PreconditionOut::SuccessRepeat(r, act) => f
+                .debug_tuple("SuccessRepeat")
+                .field(r)
+                .field(act)
+                .finish(),
+            PreconditionOut::Delete => f.debug_tuple("Delete").finish(),
+        }
+    }
 }
 
 /// A queued action to be executed for some [acting entity](ActingEntity).
@@ -116,11 +141,11 @@ pub trait ProspectiveAction<Spec: WorldSpec>: Debug + Send + Sync {
         &mut self,
         exclusive: Vec<MutThing<Spec>>,
         shared: Vec<RefThing<Spec>>,
-    ) -> LocalActionActRet;
+    ) -> LocalActionActRet<Spec>;
 
     /// Perform an action mutable on the [world](World).
     #[allow(unused_variables)]
-    fn world_act<'a>(&'a mut self, world: &'a mut World<Spec>) -> PastActionRetBatch {
+    fn world_act<'a>(&'a mut self, world: &'a mut World<Spec>) -> PastActionRetBatch<Spec> {
         Vec::new()
     }
 }
@@ -263,14 +288,6 @@ impl<Spec: WorldSpec> Entity<Spec, (), PastActionIdx> for PastAction {
     fn progress_time(&mut self, _dt: RelativeTime) {}
 }
 
-/// A potentially relative [past action index](PastActionIdx), used for
-/// referencing past actions in [batches](PastActionRetBatch).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum RelativeIdx {
-    Absolute(PastActionIdx),
-    FromStartOfBatch(isize),
-}
-
 /// The information returned by a finished [action](ProspectiveAction) that
 /// will be turned into a [`PastAction`] by the [world](World).
 #[derive(Debug, Clone)]
@@ -278,7 +295,7 @@ pub struct PastActionRet {
     /// The description of the event.
     pub description: String,
     /// The [past actions](PastAction) that *directly* caused this.
-    pub causes: Box<[RelativeIdx]>,
+    pub causes: Box<[PastActionIdx]>,
     /// The [entity](ActingEntity) that initiated this event.
     pub initiator: ThingIdx,
     /// The recipients of this action.
@@ -291,7 +308,7 @@ pub struct PastActionRet {
     pub bystanders: Box<[ThingIdx]>,
 }
 
-pub type PastActionRetBatch = Vec<PastActionRet>;
+pub type PastActionRetBatch<Spec> = Vec<Box<dyn FnOnce(&World<Spec>, PastActionIdx) -> PastActionRet>>;
 
 /// An arbitrary integer used to encode some user-defined reason for which the
 /// [action slot](ActionSlot) it's associated with is locked.

@@ -1,0 +1,11 @@
+[package]
+name = "calicity-dialog"
+version = "0.1.0"
+authors = ["ocornoc <ocornoc@protonmail.com>"]
+edition = "2018"
+include = ["src/**/*"]
+
+[dependencies]
+calicity-world = {version = "0.1", path = "../calicity-world"}
+
+[dev-dependencies]

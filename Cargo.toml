@@ -1,5 +1,6 @@
 [workspace]
 members = [
   "calicity-world",
+  "calicity-dialog",
   "calicity-knowledge",
 ]

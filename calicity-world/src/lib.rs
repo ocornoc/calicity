@@ -624,7 +624,7 @@ macro_rules! get_ref_mut_index {
         /// An index to a particular type in the [world](World).
         #[repr(transparent)]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub struct $idx(pub(crate) usize);
+        pub struct $idx(pub usize);
 
         impl<Spec: WorldSpec> World<Spec> {
             /// Get a reference to an [entity](Entity) from its index.

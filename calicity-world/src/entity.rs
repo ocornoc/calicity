@@ -108,40 +108,7 @@ where
 }
 
 macro_rules! impl_refs_for_entities {
-    ($idx:ty, $t:ty $( ,)?) => {
-        impl AsRef<EntityData<$idx>> for $t {
-            fn as_ref(&self) -> &EntityData<$idx> {
-                &self.entity_data
-            }
-        }
-
-        impl AsMut<EntityData<$idx>> for $t {
-            fn as_mut(&mut self) -> &mut EntityData<$idx> {
-                &mut self.entity_data
-            }
-        }
-
-        impl PartialEq for $t {
-            fn eq(&self, other: &Self) -> bool {
-                self.entity_data.id == other.entity_data.id
-            }
-        }
-
-        impl Eq for $t {}
-
-        impl Hash for $t {
-            fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-                self.entity_data.hash(state);
-            }
-        }
-
-        impl<'a> From<&'a $t> for ThingIdx {
-            fn from(r: &$t) -> Self {
-                r.as_ref().id.into()
-            }
-        }
-    };
-    ($idx:ty, $t:tt, "data" $( ,)?) => {
+    ($idx:ty, $t:tt $( ,)?) => {
         impl<Spec: WorldSpec> AsRef<EntityData<$idx>> for $t<Spec> {
             fn as_ref(&self) -> &EntityData<$idx> {
                 &self.entity_data
@@ -311,7 +278,7 @@ impl<Spec: WorldSpec> Debug for Character<Spec> {
     }
 }
 
-impl_refs_for_entities!(CharIdx, Character, "data");
+impl_refs_for_entities!(CharIdx, Character);
 impl_acts_for_entities!(Character);
 
 impl<Spec: WorldSpec> Entity<Spec, Spec::CharData, CharIdx> for Character<Spec> {
@@ -353,7 +320,7 @@ impl<Spec: WorldSpec> Artifact<Spec> {
     }
 }
 
-impl_refs_for_entities!(ArtIdx, Artifact, "data");
+impl_refs_for_entities!(ArtIdx, Artifact);
 impl_acts_for_entities!(Artifact);
 
 impl<Spec: WorldSpec> Debug for Artifact<Spec> {
@@ -401,7 +368,7 @@ impl<Spec: WorldSpec> Place<Spec> {
     }
 }
 
-impl_refs_for_entities!(PlaceIdx, Place, "data");
+impl_refs_for_entities!(PlaceIdx, Place);
 impl_acts_for_entities!(Place);
 
 impl<Spec: WorldSpec> Debug for Place<Spec> {

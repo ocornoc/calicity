@@ -31,6 +31,8 @@ pub trait WorldSpec: 'static {
     type ArtifactData: Debug + Sync;
     /// The [place](Place) data.
     type PlaceData: Debug + Sync;
+    /// The [past action](PastAction) data.
+    type PastActionData: Debug + Sync;
 }
 
 /// The default [specification](WorldSpec) of [world](World) data.
@@ -41,6 +43,7 @@ impl WorldSpec for DefaultSpec {
     type CharData = ();
     type ArtifactData = ();
     type PlaceData = ();
+    type PastActionData = ();
 }
 
 /// An index to an [entity](Entity) in the [world](World).
@@ -73,7 +76,7 @@ impl<Spec: WorldSpec> From<RefThing<'_, Spec>> for ThingIdx {
             RefThing::Char(c) => ThingIdx::Char(c.get_id()),
             RefThing::Artifact(a) => ThingIdx::Artifact(a.get_id()),
             RefThing::Place(p) => ThingIdx::Place(p.get_id()),
-            RefThing::Action(a) => ThingIdx::Action(<PastAction as Entity<Spec, _, _>>::get_id(a)),
+            RefThing::Action(a) => ThingIdx::Action(a.get_id()),
         }
     }
 }
@@ -84,7 +87,7 @@ impl<Spec: WorldSpec> From<MutThing<'_, Spec>> for ThingIdx {
             MutThing::Char(c) => ThingIdx::Char(c.get_id()),
             MutThing::Artifact(a) => ThingIdx::Artifact(a.get_id()),
             MutThing::Place(p) => ThingIdx::Place(p.get_id()),
-            MutThing::Action(a) => ThingIdx::Action(<PastAction as Entity<Spec, _, _>>::get_id(a)),
+            MutThing::Action(a) => ThingIdx::Action(a.get_id()),
         }
     }
 }
@@ -98,7 +101,7 @@ pub enum RefThing<'a, Spec: WorldSpec> {
     /// A reference to a [place](Place).
     Place(&'a Place<Spec>),
     /// A reference to an [action](PastAction).
-    Action(&'a PastAction),
+    Action(&'a PastAction<Spec>),
 }
 
 impl<'a, Spec: WorldSpec> Clone for RefThing<'a, Spec> {
@@ -179,7 +182,7 @@ macro_rules! try_from_for_ref {
 try_from_for_ref!(RefThing, Character<Spec>, Char);
 try_from_for_ref!(RefThing, Artifact<Spec>, Artifact);
 try_from_for_ref!(RefThing, Place<Spec>, Place);
-try_from_for_ref!(RefThing, PastAction, Action);
+try_from_for_ref!(RefThing, PastAction<Spec>, Action);
 
 /// A `mut` reference to an [entity](Entity) in the [world](World)
 pub enum MutThing<'a, Spec: WorldSpec> {
@@ -190,7 +193,7 @@ pub enum MutThing<'a, Spec: WorldSpec> {
     /// A `mut` reference to a [place](Place).
     Place(&'a mut Place<Spec>),
     /// A `mut` reference to an [action](PastAction).
-    Action(&'a mut PastAction),
+    Action(&'a mut PastAction<Spec>),
 }
 
 impl<'a, Spec: WorldSpec> PartialEq for MutThing<'a, Spec> {
@@ -225,13 +228,13 @@ impl<'a, Spec: WorldSpec> Debug for MutThing<'a, Spec> {
 try_from_for_ref!(MutThing, Character<Spec>, Char, mut);
 try_from_for_ref!(MutThing, Artifact<Spec>, Artifact, mut);
 try_from_for_ref!(MutThing, Place<Spec>, Place, mut);
-try_from_for_ref!(MutThing, PastAction, Action, mut);
+try_from_for_ref!(MutThing, PastAction<Spec>, Action, mut);
 
 pub struct World<Spec: WorldSpec = DefaultSpec> {
     chars: Vec<Character<Spec>>,
     artifacts: Vec<Artifact<Spec>>,
     places: Vec<Place<Spec>>,
-    history: Vec<PastAction>,
+    history: Vec<PastAction<Spec>>,
     time: Time,
     uniques: BTreeMap<Unique, ThingIdx>,
 }
@@ -502,6 +505,7 @@ impl<Spec: WorldSpec> World<Spec> {
                 initiator: act.initiator,
                 recipients: act.recipients,
                 bystanders: act.bystanders,
+                data: act.data,
             };
 
             for &cause in act.causes.iter() {
@@ -591,7 +595,7 @@ impl<Spec: WorldSpec> World<Spec> {
 
     /// Insert a new [past action](PastAction) into the history of the
     /// [world](World).
-    pub fn new_action(&mut self, data: PastAction) -> &mut PastAction {
+    pub fn new_action(&mut self, data: PastAction<Spec>) -> &mut PastAction<Spec> {
         self.history.push(data);
         self.history.last_mut().unwrap()
     }
@@ -719,6 +723,6 @@ get_ref_mut_index!(
     get_all_past_actions_mut,
     history,
     PastActionIdx,
-    PastAction,
+    PastAction<Spec>,
     Action,
 );

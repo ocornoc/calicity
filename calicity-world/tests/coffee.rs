@@ -67,6 +67,7 @@ impl ProspectiveAction<DefaultSpec> for DrinkCoffee {
             initiator: me.entity_data.get_id().into(),
             recipients: Box::new([coffee_cup.entity_data.get_id().into()]),
             bystanders: Box::new([]),
+            data: (),
         };
 
         LocalActionActRet::Completed(vec![Box::new(move |_, _| act)])

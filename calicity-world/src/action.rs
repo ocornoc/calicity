@@ -258,8 +258,7 @@ impl<Spec: WorldSpec> Debug for QueuedActions<Spec> {
 }
 
 /// The data recorded about executed [actions](ProspectiveAction).
-#[derive(Debug)]
-pub struct PastAction {
+pub struct PastAction<Spec: WorldSpec> {
     /// The data associated with this entity.
     pub entity_data: EntityData<PastActionIdx>,
     /// The actions directly causing this action to occur.
@@ -276,22 +275,39 @@ pub struct PastAction {
     ///
     /// Bystanders aren't directly involved in the action at all.
     pub bystanders: Box<[ThingIdx]>,
+    
+    pub data: Spec::PastActionData,
 }
 
-impl Display for PastAction {
+impl<Spec: WorldSpec> Debug for PastAction<Spec> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        f
+            .debug_struct("PastAction")
+            .field("entity_data", &self.entity_data)
+            .field("causes", &self.causes)
+            .field("caused", &self.caused)
+            .field("initiator", &self.initiator)
+            .field("recipients", &self.recipients)
+            .field("bystanders", &self.bystanders)
+            .field("data", &self.data)
+            .finish()
+    }
+}
+
+impl<Spec: WorldSpec> Display for PastAction<Spec> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         Display::fmt(&self.entity_data.name, f)
     }
 }
 
-impl<Spec: WorldSpec> Entity<Spec, (), PastActionIdx> for PastAction {
+impl<Spec: WorldSpec> Entity<Spec, Spec::PastActionData, PastActionIdx> for PastAction<Spec> {
     fn progress_time(&mut self, _dt: RelativeTime) {}
 }
 
 /// The information returned by a finished [action](ProspectiveAction) that
 /// will be turned into a [`PastAction`] by the [world](World).
 #[derive(Debug, Clone)]
-pub struct PastActionRet {
+pub struct PastActionRet<Spec: WorldSpec> {
     /// The description of the event.
     pub description: String,
     /// The [past actions](PastAction) that *directly* caused this.
@@ -306,9 +322,11 @@ pub struct PastActionRet {
     ///
     /// Bystanders aren't directly involved in the action at all.
     pub bystanders: Box<[ThingIdx]>,
+    pub data: Spec::PastActionData,
 }
 
-pub type PastActionRetBatch<Spec> = Vec<Box<dyn FnOnce(&World<Spec>, PastActionIdx) -> PastActionRet>>;
+pub type PastActionRetBatch<Spec> =
+    Vec<Box<dyn FnOnce(&World<Spec>, PastActionIdx) -> PastActionRet<Spec>>>;
 
 /// An arbitrary integer used to encode some user-defined reason for which the
 /// [action slot](ActionSlot) it's associated with is locked.

@@ -27,9 +27,9 @@ pub mod action;
 pub trait WorldSpec: 'static {
     /// The [character](Character) data.
     type CharData: Debug + Sync;
-    /// The [character](Character) data.
+    /// The [artifact](Artifact) data.
     type ArtifactData: Debug + Sync;
-    /// The [character](Character) data.
+    /// The [place](Place) data.
     type PlaceData: Debug + Sync;
 }
 

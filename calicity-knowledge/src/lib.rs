@@ -106,10 +106,12 @@ pub trait BeliefValue: Debug + Hash + Eq + Sized + Clone {
 
     fn mutate_evidence(
         &self,
-        vdata: &ValueData,
+        vdata: &mut ValueData,
         evidence: usize,
         rng: &mut (impl Rng + ?Sized),
-    ) -> Option<(Self, OccasionalEvidence)>;
+    ) -> Option<(Self, OccasionalEvidence)> {
+        Some((self.mutate_value(vdata, rng)?, vdata.occasional_evidence.swap_remove(evidence)))
+    }
 }
 
 /// A kind of [(occasional) evidence](OccasionalEvidence).

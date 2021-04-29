@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::collections::HashSet;
 use super::*;
 
 /// A unique ID associated with every [entity].
@@ -347,6 +348,8 @@ pub struct Place<Spec: WorldSpec> {
     pub entity_data: EntityData<PlaceIdx>,
     pub action_state: ActionState<Spec>,
     pub data: Spec::PlaceData,
+    pub characters: HashSet<CharIdx>,
+    pub artifacts: HashSet<ArtIdx>,
 }
 
 impl<Spec: WorldSpec> Place<Spec> {
@@ -361,6 +364,8 @@ impl<Spec: WorldSpec> Place<Spec> {
                 created: world.get_time(),
             },
             action_state: ActionState::default(),
+            characters: HashSet::new(),
+            artifacts: HashSet::new(),
             data,
         };
         let id = world.push_place(place);

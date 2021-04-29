@@ -28,8 +28,10 @@ impl<Spec: WorldSpec> Pointer for Frame<Spec> {
 
 pub struct Obligation<Spec: WorldSpec> {
     pub urgency: Urgency,
-    pub update_conversers: Box<dyn FnOnce(&mut Character<Spec>, &mut Character<Spec>)>,
-    pub generate_data: Box<dyn FnOnce(&World<Spec>, PastActionIdx) -> ObligationData<Spec>>,
+    pub update_conversers:
+        Box<dyn FnOnce(&mut Character<Spec>, &mut Character<Spec>) + Send + Sync>,
+    pub generate_data:
+        Box<dyn FnOnce(&World<Spec>, PastActionIdx) -> ObligationData<Spec> + Send + Sync>,
 }
 
 impl<Spec: WorldSpec> Debug for Obligation<Spec> {

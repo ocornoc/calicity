@@ -139,6 +139,12 @@ impl<Spec: WorldSpec> Debug for ConvStates<Spec> {
     }
 }
 
+impl<Spec: WorldSpec> Default for ConvStates<Spec> {
+    fn default() -> Self {
+        ConvStates(HashMap::default())
+    }
+}
+
 pub fn update_state<Spec: WorldSpec>(
     initiator: &mut Character<Spec>,
     recipient: &mut Character<Spec>,

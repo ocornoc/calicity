@@ -160,7 +160,7 @@ where
         .get_mut(&recipient.get_id())
         .expect("tried to update state between two entities with no conversation state");
 
-    let mut obligation = if let Some(next) = state.obligations.pop() {
+    let obligation = if let Some(next) = state.obligations.pop() {
         next
     } else {
         delete.store(true, Ordering::Release);

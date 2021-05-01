@@ -28,10 +28,12 @@ impl<Spec: WorldSpec> Pointer for Frame<Spec> {
 
 pub struct Obligation<Spec: WorldSpec> {
     pub urgency: Urgency,
+    pub initiator_performs: bool,
     pub update_conversers:
-        Box<dyn FnOnce(&mut Character<Spec>, &mut Character<Spec>) + Send + Sync>,
-    pub generate_data:
-        Box<dyn FnOnce(&World<Spec>, PastActionIdx) -> ObligationData<Spec> + Send + Sync>,
+        Box<dyn FnOnce(&mut Character<Spec>, &mut Character<Spec>, bool) + Send + Sync>,
+    pub generate_data: Box<
+        dyn FnOnce(&World<Spec>, PastActionIdx, bool) -> ObligationData<Spec> + Send + Sync
+    >,
 }
 
 impl<Spec: WorldSpec> Debug for Obligation<Spec> {
@@ -158,7 +160,7 @@ where
         .get_mut(&recipient.get_id())
         .expect("tried to update state between two entities with no conversation state");
 
-    let obligation = if let Some(next) = state.obligations.pop() {
+    let mut obligation = if let Some(next) = state.obligations.pop() {
         next
     } else {
         delete.store(true, Ordering::Release);
@@ -177,13 +179,14 @@ where
         state.goals.swap_remove(i);
     }
 
-    (obligation.update_conversers)(initiator, recipient);
+    (obligation.update_conversers)(initiator, recipient, obligation.initiator_performs);
     let generate_data = obligation.generate_data;
     let initiator = initiator.get_id().into();
     let recipients = Box::new([recipient.get_id().into()]);
+    let initiator_performs = obligation.initiator_performs;
 
     Some(Box::new(move |world, id| {
-        let data = generate_data(world, id);
+        let data = generate_data(world, id, initiator_performs);
 
         PastActionRet {
             description: data.description,

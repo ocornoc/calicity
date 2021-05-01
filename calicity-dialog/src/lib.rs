@@ -9,6 +9,25 @@ use std::fmt::{Debug, Formatter, Pointer, Result as FmtResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 use calicity_world::*;
 
+pub type Tag = u64;
+
+pub trait Obligation<Spec: WorldSpec>: Debug + Send + Sync {
+    fn update_conversers(
+        &mut self,
+        initiator: &mut Character<Spec>,
+        recipient: &mut Character<Spec>,
+        initiator_performs: bool,
+    );
+
+    fn generate_data(
+        &mut self,
+        world: &World<Spec>,
+        this_act: PastActionIdx,
+    ) -> ObligationData<Spec>;
+
+    fn fulfills_tag(&self, tag: Tag) -> bool;
+}
+
 #[repr(transparent)]
 pub struct Frame<Spec: WorldSpec>(
     pub fn(&World<Spec>, &Character<Spec>, &Character<Spec>, &mut ConvState<Spec>),
@@ -26,23 +45,19 @@ impl<Spec: WorldSpec> Pointer for Frame<Spec> {
     }
 }
 
-pub struct Obligation<Spec: WorldSpec> {
+pub struct QueuedObligation<Spec: WorldSpec> {
     pub urgency: Urgency,
     pub initiator_performs: bool,
-    pub update_conversers:
-        Box<dyn FnOnce(&mut Character<Spec>, &mut Character<Spec>, bool) + Send + Sync>,
-    pub generate_data: Box<
-        dyn FnOnce(&World<Spec>, PastActionIdx, bool) -> ObligationData<Spec> + Send + Sync
-    >,
+    pub obligation: Box<dyn Obligation<Spec>>,
 }
 
-impl<Spec: WorldSpec> Debug for Obligation<Spec> {
+impl<Spec: WorldSpec> Debug for QueuedObligation<Spec> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         f
             .debug_struct("Obligation")
             .field("urgency", &self.urgency)
-            .field("update_conversers", &format!("{:p}", &self.update_conversers))
-            .field("generate_data", &format!("{:p}", &self.generate_data))
+            .field("initiator_performs", &self.initiator_performs)
+            .field("obligation", &self.obligation)
             .finish()
     }
 }
@@ -63,28 +78,28 @@ impl<Spec: WorldSpec> Debug for ObligationData<Spec> {
     }
 }
 
-impl<Spec: WorldSpec> PartialEq for Obligation<Spec> {
+impl<Spec: WorldSpec> PartialEq for QueuedObligation<Spec> {
     fn eq(&self, other: &Self) -> bool {
         self.urgency == other.urgency
     }
 }
 
-impl<Spec: WorldSpec> Eq for Obligation<Spec> {}
+impl<Spec: WorldSpec> Eq for QueuedObligation<Spec> {}
 
-impl<Spec: WorldSpec> PartialOrd for Obligation<Spec> {
+impl<Spec: WorldSpec> PartialOrd for QueuedObligation<Spec> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.urgency.partial_cmp(&other.urgency)
     }
 }
 
-impl<Spec: WorldSpec> Ord for Obligation<Spec> {
+impl<Spec: WorldSpec> Ord for QueuedObligation<Spec> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.urgency.cmp(&other.urgency)
     }
 }
 
 pub struct ConvState<Spec: WorldSpec> {
-    pub obligations: BinaryHeap<Obligation<Spec>>,
+    pub obligations: BinaryHeap<QueuedObligation<Spec>>,
     pub goals: Vec<Box<dyn Goal<Spec>>>,
 }
 
@@ -124,11 +139,11 @@ impl<Spec: WorldSpec> Debug for ConvState<Spec> {
     }
 }
 
-pub trait Goal<Spec: WorldSpec>: Debug + Send + Sync + 'static {
+pub trait Goal<Spec: WorldSpec>: Debug + Send + Sync {
     fn update_state(
         &mut self,
-        popped: &Obligation<Spec>,
-        obligations: &mut BinaryHeap<Obligation<Spec>>,
+        popped: &QueuedObligation<Spec>,
+        obligations: &mut BinaryHeap<QueuedObligation<Spec>>,
     ) -> bool;
 }
 
@@ -160,7 +175,7 @@ where
         .get_mut(&recipient.get_id())
         .expect("tried to update state between two entities with no conversation state");
 
-    let obligation = if let Some(next) = state.obligations.pop() {
+    let mut obligation = if let Some(next) = state.obligations.pop() {
         next
     } else {
         delete.store(true, Ordering::Release);
@@ -179,14 +194,13 @@ where
         state.goals.swap_remove(i);
     }
 
-    (obligation.update_conversers)(initiator, recipient, obligation.initiator_performs);
-    let generate_data = obligation.generate_data;
+    obligation.obligation.update_conversers(initiator, recipient, obligation.initiator_performs);
+    let mut obligation = obligation.obligation;
     let initiator = initiator.get_id().into();
     let recipients = Box::new([recipient.get_id().into()]);
-    let initiator_performs = obligation.initiator_performs;
 
     Some(Box::new(move |world, id| {
-        let data = generate_data(world, id, initiator_performs);
+        let data = obligation.generate_data(world, id);
 
         PastActionRet {
             description: data.description,

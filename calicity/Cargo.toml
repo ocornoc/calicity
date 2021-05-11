@@ -1,0 +1,17 @@
+[package]
+name = "calicity"
+version = "0.1.0"
+authors = ["ocornoc <ocornoc@protonmail.com>"]
+edition = "2018"
+include = ["src/**/*"]
+
+[dependencies]
+calicity-world = {version = "0.1", path = "../calicity-world"}
+calicity-knowledge = {version = "0.1", path = "../calicity-knowledge"}
+calicity-dialog = {version = "0.1", path = "../calicity-dialog"}
+chrono = {version = "0.4.19", default-features = false, features = ["std"]}
+rand = "0.8.3"
+rand_distr = "0.4"
+const-random = "0.1.13"
+
+[dev-dependencies]

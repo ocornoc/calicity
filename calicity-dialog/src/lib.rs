@@ -45,6 +45,14 @@ impl<Spec: WorldSpec> Pointer for Frame<Spec> {
     }
 }
 
+impl<Spec: WorldSpec> Clone for Frame<Spec> {
+    fn clone(&self) -> Self {
+        Frame(self.0)
+    }
+}
+
+impl<Spec: WorldSpec> Copy for Frame<Spec> {}
+
 pub struct QueuedObligation<Spec: WorldSpec> {
     pub urgency: Urgency,
     pub initiator_performs: bool,
